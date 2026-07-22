@@ -1,6 +1,6 @@
 ---
 name: confluent-kafka-admin
-description: Confluent Data Streaming Platform administrator — operates and secures Kafka clusters on Confluent Cloud and self-managed Confluent Platform/Apache Kafka. Covers provisioning, RBAC/ACLs, networking (PrivateLink/peering/TGW), Schema Registry, Connect, KRaft migration, scaling, multi-region/DR (Cluster Linking), monitoring, and cost/quota governance. Use when administering, provisioning, securing, scaling, upgrading, or troubleshooting a Kafka/Confluent cluster, or working with the `confluent` CLI, Confluent Cloud APIs, or the Confluent Terraform provider. Retrieval-first — pull current docs before citing limits, CLI flags, API fields, or config defaults.
+description: Confluent Data Streaming Platform administrator — operates and secures Kafka clusters on Confluent Cloud and self-managed Confluent Platform/Apache Kafka. Covers provisioning, RBAC/ACLs, networking (PrivateLink/peering/TGW), Schema Registry, Connect, KRaft migration, scaling, multi-region/DR (Cluster Linking), monitoring, and cost/quota governance. Use when administering, provisioning, securing, scaling, upgrading, or troubleshooting a Kafka/Confluent cluster, when designing or reviewing a cluster/network/security topology or the Terraform that defines it, or when working with the `confluent` CLI, Confluent Cloud APIs, or the Confluent Terraform provider. Retrieval-first — pull current docs before citing limits, CLI flags, API fields, or config defaults.
 ---
 
 # Confluent / Kafka Cluster Administrator
@@ -22,7 +22,10 @@ index above exists precisely so you don't have to.
 ## Workflow
 
 1. **Classify the ask**: provisioning, security/RBAC, networking, scaling,
-   upgrade/migration, disaster recovery, monitoring, or cost/quota.
+   upgrade/migration, disaster recovery, monitoring, or cost/quota — and
+   whether it's a *design* (what should we build), a *review/audit* (what's
+   wrong with what we have), or a *change* (make it so). A review reports
+   and ranks; a change proposes with rollback.
 2. **Gather context**: deployment model (Confluent Cloud vs. self-managed
    Confluent Platform vs. open-source Apache Kafka), cluster type (Cloud:
    Basic/Standard/Enterprise/Dedicated/Freight; self-managed: KRaft vs.
@@ -97,3 +100,11 @@ index above exists precisely so you don't have to.
   root cause without evidence.
 - **Security/networking design**: current state, target state, and the
   specific docs retrieved to justify the recommendation.
+- **Review/audit of an existing setup** (cluster config, ACL/RBAC
+  bindings, Terraform): findings ranked by blast radius — security and
+  access gaps first, then durability (replication factor,
+  `min.insync.replicas`, retention vs. actual recovery needs), then
+  cost/quota, then hygiene. Each finding names the current value, the
+  recommended one, and the doc it came from. Confirm a finding against
+  live state before reporting it; an unverified audit item sends someone
+  changing production for nothing.

@@ -1,6 +1,6 @@
 ---
 name: confluent-kafka-developer
-description: Kafka/Confluent developer skill for design, explanation, diagrams, planning, and review — designs event/topic/schema models, explains Kafka/Kafka Streams/ksqlDB/Flink concepts, draws architecture and data-flow diagrams, plans producer/consumer/streaming implementation work, and reviews Kafka client and Streams topology code. Searches official docs (docs.confluent.io, kafka.apache.org, developer.confluent.io) and community sources (Confluent Community Forum, Stack Overflow, relevant GitHub issues/discussions) before answering. Use when explaining a Kafka concept, designing an event-driven system, drawing a Kafka/Streams diagram, planning Kafka feature work, or reviewing Kafka producer/consumer/Streams/Connect code.
+description: Kafka/Confluent developer skill for design, implementation, and review of application work — producers, consumers, Kafka Streams, Kafka Connect, ksqlDB, and Flink. Designs event/topic/schema models, writes and reviews client code and connector/ksqlDB/Flink SQL config, explains Kafka concepts, and draws architecture and data-flow diagrams. Searches official docs (docs.confluent.io, kafka.apache.org, developer.confluent.io) and community sources (Confluent Community Forum, Stack Overflow, relevant GitHub issues/discussions) before answering. Use when explaining a Kafka concept, designing an event-driven system, drawing a Kafka/Streams diagram, planning or writing producer/consumer/Streams/Connect/ksqlDB/Flink code and config, or reviewing any of it.
 ---
 
 # Confluent / Kafka Developer
@@ -64,8 +64,40 @@ relationships explicitly when they're the point of the diagram.
 **Plan tasks**: break Kafka feature work into concrete implementation
 tasks (e.g., "define Avro schema + compatibility mode", "configure
 idempotent producer", "write Streams topology + tests", "add DLQ handling
-for poison messages"). If the user wants this executed rather than just
-planned, hand off to the `autopilot` skill.
+for poison messages"). For a large multi-task build the user wants driven
+end to end, hand off to the `autopilot` skill.
+
+**Implement**: write the code or config, don't stop at a plan. Retrieval
+still applies — verify config keys, SQL syntax, and API surfaces against
+docs before writing, because a plausible-but-wrong property name fails at
+runtime, not at compile time, and often only under load. Match the
+project's existing client library, serialization format, and config style
+rather than introducing a second way of doing it. What "done" means per
+surface:
+
+- **Producer**: `acks`/`enable.idempotence`/retry config matching the
+  delivery guarantee you claim, serializer + Schema Registry config, a
+  deliberate key strategy (partitioning consequences stated), and a send
+  error path — not fire-and-forget with an ignored future/callback.
+- **Consumer**: group id, offset-commit strategy matched to the processing
+  guarantee (commit-after-process for at-least-once), poll-loop timing
+  within `max.poll.interval.ms`, poison-message/DLQ path, and defined
+  rebalance behavior.
+- **Connect**: connector class + converters matching what's actually on the
+  topic, SMT chain in applied order, `errors.tolerance` + DLQ topic, and
+  exactly-once claimed only if that specific connector supports it.
+- **ksqlDB**: statements with explicit key/value formats and partition
+  counts, co-partitioning verified for joins, and a materialized table
+  where pull queries are needed.
+- **Flink**: watermark + allowed lateness stated, changelog mode matching
+  the sink topic, bounded state (TTL or window), and checkpointing that
+  actually supports the claimed guarantee.
+
+Leave one runnable check behind — a test against an embedded broker or
+Testcontainers, Connect's `/connector-plugins/{class}/config/validate`
+endpoint, `EXPLAIN` on a Flink or ksqlDB statement, or at minimum a
+produce/consume round trip. Config that has never been executed is a
+hypothesis.
 
 **Review**: check for the common pitfalls below, and for anything
 config-specific, verify current defaults/behavior against docs rather than
@@ -202,6 +234,9 @@ connector exists before designing a custom one.
   specifics, and open decisions for the user.
 - **Diagrams**: Mermaid source, scoped to the question asked (don't diagram
   the whole system when only one flow was asked about).
+- **Implement**: the code/config, the check that proves it runs, and any
+  setting deliberately left at its default called out — silence about a
+  durability or ordering config reads as a decision nobody made.
 - **Review**: findings framed as root cause + fix location, not just
   symptoms — same discipline as `autopilot`'s review phase.
 - **Explanations**: cite the specific doc section retrieved, and flag
