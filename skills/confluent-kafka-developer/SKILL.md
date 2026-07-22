@@ -16,12 +16,19 @@ versions (KRaft, tiered storage, exactly-once semantics, new client
 configs) — don't answer from pretrained memory alone for anything
 version-specific.
 
-1. **Official docs first**: [docs.confluent.io](https://docs.confluent.io/),
-   [kafka.apache.org/documentation](https://kafka.apache.org/documentation/),
-   [developer.confluent.io](https://developer.confluent.io/) (courses,
-   patterns, event-driven design guides), and the relevant client library
-   docs (Java, Python, Go, .NET, librdkafka) — use context7 if available
-   for exact client API surfaces.
+1. **Official docs first**: start from
+   [docs.confluent.io/llms.txt](https://docs.confluent.io/llms.txt) —
+   Confluent's LLM-oriented doc index (~150 links organized by product/topic:
+   Cloud, Platform, Flink, connectors, clients, security, CLI, etc.) — to
+   find the right page fast, then fetch that specific page for exact
+   details. Use
+   [llms-full.txt](https://docs.confluent.io/llms-full.txt) for grounding
+   on terminology/glossary questions, not as a substitute for the actual
+   page. Also check [kafka.apache.org/documentation](https://kafka.apache.org/documentation/)
+   for OSS-specific behavior, [developer.confluent.io](https://developer.confluent.io/)
+   for patterns/courses/event-driven design guides, and the relevant client
+   library docs (Java, Python, Go, .NET, librdkafka) — use context7 if
+   available for exact client API surfaces.
 2. **Community sources when docs don't settle it**: a specific error
    message, an edge case, or "does X actually behave like Y in practice" —
    search the [Confluent Community Forum](https://forum.confluent.io/),
