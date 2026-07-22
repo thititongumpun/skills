@@ -12,6 +12,15 @@ Default planner/reviewer model is `opus`. Use `fable` instead only if the
 user asked for it. Default fix-loop cap is 2 rounds unless the user says
 otherwise.
 
+## Phase 0: Clarify
+
+Before deploying the Phase 1 Plan agent, check whether the request has
+enough detail to plan against: scope/boundaries, target files or repo,
+constraints, acceptance criteria. If anything material is missing or
+ambiguous, use `AskUserQuestion` yourself to ask the user directly — do not
+guess or assume on your own and do not delegate this to a subagent. Only
+proceed to Phase 1 once the request is concrete enough to plan.
+
 ## Phase 1: Plan
 
 Deploy one Agent call, `model: "opus"` (or `"fable"`), given the user's
