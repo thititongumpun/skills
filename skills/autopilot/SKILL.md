@@ -12,6 +12,27 @@ Default planner/reviewer model is `opus`. Use `fable` instead only if the
 user asked for it. Default fix-loop cap is 2 rounds unless the user says
 otherwise.
 
+## Progress reporting
+
+The user is not driving this loop, so tell them where it is without being
+asked.
+
+- After Phase 1, print the full numbered task list, marking which tasks are
+  flagged complex. That's the total scope — the user can't judge "remaining"
+  until they've seen it.
+- If `TodoWrite` is available, mirror the task list into it (one todo per
+  task, plus one for Review) and keep statuses current — that's the native
+  progress UI. If it isn't available, emit a one-line marker instead as each
+  phase or task batch starts:
+  `[3/7] Executing: add DLQ handling (complex → opus)`
+- In the fix loop, state the round: `[Review round 1/2] 3 findings, fixing`.
+- On finish, report what ran: tasks completed, fix rounds used, and whether
+  the final review came back clean.
+
+**Report counts and phase, never time estimates.** Subagent duration isn't
+knowable in advance — "about 5 minutes left" would be invented. "4 of 7
+tasks done, review pending" is true and just as useful.
+
 ## Phase 0: Clarify
 
 Before deploying the Phase 1 Plan agent, check whether the request has
