@@ -38,22 +38,15 @@ needs subagents and TodoWrite.
 
 ## Skills
 
-- **autopilot** — Opus/Fable plans a task into a task list, subagents
-  execute each task (escalating to Opus/Fable when a task is flagged
-  complex), then Opus/Fable reviews everything and loops fixes back until
-  clean. Trigger: "autopilot", "/autopilot \<task\>", "do this yourself",
-  "full auto".
-- **confluent-kafka-admin** — Confluent Data Streaming Platform administrator:
-  Confluent Cloud and self-managed cluster provisioning, RBAC/ACLs,
-  networking, Schema Registry, Connect, scaling, upgrades, DR, and cost
-  governance. Retrieval-first against current Confluent docs.
-- **confluent-kafka-developer** — Kafka/Confluent developer skill: design,
-  explain, diagram, plan, and review Kafka application work. Researches
-  official docs plus community sources (forum, Stack Overflow, GitHub)
-  before answering.
-- **fetch-403** — recover a page after the fetcher gets 403: curl fallback,
-  machine-readable endpoints (`llms.txt`, raw GitHub, APIs), and the rule
-  against silently answering from memory when a source stays blocked.
-- **pptx-diagram** — Mermaid → PowerPoint via `officecli`, producing real
-  editable shapes and connectors (not a flat image) for flowchart and
-  sequence diagrams. Requires [officecli](https://officecli.ai).
+- **autopilot** — plans a task, runs it through subagents, reviews the
+  result, loops fixes until clean. Claude Code only.
+- **confluent-kafka-admin** — Kafka/Confluent *cluster* work: provisioning,
+  RBAC/ACLs, networking, scaling, DR, cost.
+- **confluent-kafka-developer** — Kafka/Confluent *application* work:
+  producers/consumers, Streams, Connect, ksqlDB, Flink.
+- **fetch-403** — recover a page the fetcher was refused, without quietly
+  falling back to memory.
+- **pptx-diagram** — Mermaid → editable PowerPoint shapes via
+  [officecli](https://officecli.ai).
+
+When to reach for each, in the form agents read: [AGENTS.md](AGENTS.md).

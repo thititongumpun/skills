@@ -28,10 +28,10 @@ version-specific.
    for OSS-specific behavior, [developer.confluent.io](https://developer.confluent.io/)
    for patterns/courses/event-driven design guides,
    [Apache Flink docs](https://nightlies.apache.org/flink/flink-docs-stable/)
-   for engine-level Flink behavior (SQL/Table API/DataStream reference,
-   connectors, state, watermarks — no `llms.txt`, fetch the specific page),
-   and the relevant client library docs (Java, Python, Go, .NET,
-   librdkafka) — use context7 if available for exact client API surfaces.
+   for engine-level Flink behavior (see the Flink section for which docs
+   answer what), and the relevant client library docs (Java, Python, Go,
+   .NET, librdkafka) — use context7 if available for exact client API
+   surfaces.
 2. **Community sources when docs don't settle it**: a specific error
    message, an edge case, or "does X actually behave like Y in practice" —
    search the [Confluent Community Forum](https://forum.confluent.io/),
@@ -65,7 +65,8 @@ relationships explicitly when they're the point of the diagram.
 tasks (e.g., "define Avro schema + compatibility mode", "configure
 idempotent producer", "write Streams topology + tests", "add DLQ handling
 for poison messages"). For a large multi-task build the user wants driven
-end to end, hand off to the `autopilot` skill.
+end to end, hand off to the `autopilot` skill (Claude Code only —
+elsewhere, just present the task list).
 
 **Implement**: write the code or config, don't stop at a plan. Retrieval
 still applies — verify config keys, SQL syntax, and API surfaces against
@@ -83,15 +84,15 @@ surface:
   guarantee (commit-after-process for at-least-once), poll-loop timing
   within `max.poll.interval.ms`, poison-message/DLQ path, and defined
   rebalance behavior.
-- **Connect**: connector class + converters matching what's actually on the
-  topic, SMT chain in applied order, `errors.tolerance` + DLQ topic, and
-  exactly-once claimed only if that specific connector supports it.
+- **Connect**: right source/sink connector for the job (on Cloud, a
+  fully-managed one if it exists), converters matching what's actually on
+  the topic, SMT chain in applied order, `errors.tolerance` + DLQ topic,
+  and exactly-once claimed only if that specific connector supports it.
 - **ksqlDB**: statements with explicit key/value formats and partition
-  counts, co-partitioning verified for joins, and a materialized table
-  where pull queries are needed.
-- **Flink**: watermark + allowed lateness stated, changelog mode matching
-  the sink topic, bounded state (TTL or window), and checkpointing that
-  actually supports the claimed guarantee.
+  counts, co-partitioning verified for joins, and a CTAS-materialized
+  table where pull queries are needed.
+- **Flink**: every Flink pitfall below addressed explicitly — watermarks
+  and lateness, changelog mode vs. sink, state bounds, checkpointing.
 
 Leave one runnable check behind — a test against an embedded broker or
 Testcontainers, Connect's `/connector-plugins/{class}/config/validate`
@@ -142,27 +143,25 @@ Application-level design/review for these three, same research-first rule
 as everything else — SQL syntax, connector configs, and operators change
 across versions.
 
-**ksqlDB**: streams vs. tables semantics, push vs. pull query choice,
-materialized views for pull queries, `WITH` clause config (key format,
-value format, partitions), joins requiring co-partitioning, windowed
-aggregations (tumbling/hopping/session) and their retention, and how a
-persistent query maps to an underlying Kafka Streams app (so Streams
-pitfalls below still apply). Retrieve current
+**ksqlDB**: `WITH` clause config (key format, value format, partitions),
+windowed aggregations (tumbling/hopping/session) and their retention, and
+the fact that a persistent query is an underlying Kafka Streams app — so
+every Streams pitfall below applies to it. Retrieve current
 [ksqlDB syntax reference](https://docs.ksqldb.io/en/latest/developer-guide/ksqldb-reference/)
 before writing non-trivial statements.
 
 **Flink (Confluent Cloud for Apache Flink / self-managed Flink)**:
-watermark strategy and allowed lateness (drives correctness of windowed/
-time-based logic), event-time vs. processing-time choice,
-checkpointing/state backend for exactly-once, and Table API vs. DataStream
-API vs. Flink SQL fit for the task.
+event-time vs. processing-time choice, and Table API vs. DataStream API
+vs. Flink SQL fit for the task. Correctness knobs — watermarks, changelog
+mode, state bounds, checkpointing — are in the pitfalls below.
 
 *Which docs:* Confluent Cloud Flink for the managed surface — catalogs,
 compute pools, statements, what's supported — via
 [Cloud Flink docs](https://docs.confluent.io/cloud/current/flink/index.html);
 [Apache Flink docs](https://nightlies.apache.org/flink/flink-docs-stable/)
 for engine semantics (watermarks, state, joins, functions) and anything
-self-managed. Engine behavior is shared, the managed surface is not — don't
+self-managed — it has no `llms.txt`, so fetch the specific page. Engine
+behavior is shared, the managed surface is not — don't
 cite a Cloud-only feature for a self-managed deployment, or an Apache
 connector/UDF as available on Cloud, without checking. `flink-docs-stable`
 tracks whatever the current release is; name the version when a behavior is
@@ -177,18 +176,12 @@ disconnect. Verify current support (Table API, UDFs, connectors to
 non-Kafka systems, private networking) against the docs rather than
 assuming parity with open-source Flink.
 
-**Kafka Connect**: source vs. sink connector fit, converter choice (Avro/
-Protobuf/JSON Schema vs. plain JSON — must match what producers/consumers
-on the topic expect), single message transforms (SMTs) and their chaining
-order, `errors.tolerance`/dead-letter-queue config for bad records, and
-exactly-once support (per-connector, not universal — verify for the
-specific connector). For Confluent Cloud, check whether a fully-managed
-connector exists before designing a custom one.
-
 ### Pitfalls specific to these
 
-- ksqlDB: pull query issued against a stream (not a materialized table) —
-  will fail or behave unexpectedly.
+- ksqlDB: pull query against a plain `CREATE TABLE` table fails — only
+  tables materialized via `CREATE TABLE AS SELECT` support pull queries.
+  Pull queries on streams are allowed but full-scan the stream: fine for
+  debugging, wrong as a serving path.
 - ksqlDB/Streams joins on mismatched keys/partition counts (not
   co-partitioned) — join silently returns no results instead of erroring.
 - Flink: watermark/lateness misconfigured — late events silently dropped

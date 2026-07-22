@@ -56,8 +56,9 @@ index above exists precisely so you don't have to.
   and firewall rules.
 - **Schema Registry**: subjects, compatibility modes, RBAC for Schema
   Registry resources.
-- **Connect**: fully-managed Confluent Cloud connectors vs. self-managed
-  Connect clusters, converters, single message transforms (SMTs).
+- **Connect**: fully-managed Cloud connectors vs. self-managed Connect
+  clusters — provisioning, networking, and access. Connector *config
+  content* (converters, SMTs, DLQ) is `confluent-kafka-developer`.
 - **Stream processing admin surface**: ksqlDB clusters, Flink compute
   pools — provisioning and access control, not application logic (that's
   `confluent-kafka-developer`).
