@@ -22,9 +22,23 @@ asked.
   until they've seen it.
 - If `TodoWrite` is available, mirror the task list into it (one todo per
   task, plus one for Review) and keep statuses current — that's the native
-  progress UI. If it isn't available, emit a one-line marker instead as each
-  phase or task batch starts:
-  `[3/7] Executing: add DLQ handling (complex → opus)`
+  progress UI.
+- If it isn't available, reprint the checklist as state changes, so the
+  user always sees what's done and what's left:
+
+  ```
+  [3/7 done] Executing
+  ✅ 1. Define Avro schema + compatibility mode
+  ✅ 2. Add idempotent producer config
+  ✅ 3. Wire Schema Registry client
+  ⏳ 4. Add DLQ handling            (complex → opus)
+  ⬜ 5. Streams topology tests
+  ⬜ 6. Update docs
+  ⬜ 7. Review
+  ```
+
+  Reprint on each state change, not on every tool call — one refreshed
+  checklist per batch of task completions is enough.
 - In the fix loop, state the round: `[Review round 1/2] 3 findings, fixing`.
 - On finish, report what ran: tasks completed, fix rounds used, and whether
   the final review came back clean.
