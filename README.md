@@ -1,6 +1,7 @@
 # skills
 
-Personal Claude Code skills.
+Personal agent skills. Plain markdown, so any coding agent can use them —
+Claude Code loads them natively, everyone else reads them via `AGENTS.md`.
 
 ## Install
 
@@ -16,6 +17,24 @@ Or install as a native Claude Code plugin (updates when this repo changes):
 /plugin marketplace add thititongumpun/skills
 /plugin install skills@thititongumpun
 ```
+
+### Codex and other agents
+
+There is no plugin equivalent outside Claude Code, but `npx skills add` drops
+the files in the vendor-neutral `.agents/skills/` layout. Point your agent at
+them from your project's `AGENTS.md` — copy the table from
+[AGENTS.md](AGENTS.md) in this repo, e.g.:
+
+```markdown
+## Skills
+Read the matching file in full before acting on its topic:
+- `.agents/skills/confluent-kafka-developer/SKILL.md` — Kafka/Confluent design, review, diagrams
+- `.agents/skills/pptx-diagram/SKILL.md` — Mermaid → PowerPoint
+```
+
+Caveats: discovery is manual (the agent loads a skill because `AGENTS.md` says
+to, not by matching descriptions), and **autopilot is Claude Code only** — it
+needs subagents and TodoWrite.
 
 ## Skills
 
