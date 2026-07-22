@@ -61,6 +61,55 @@ planned, hand off to the `autopilot` skill.
 config-specific, verify current defaults/behavior against docs rather than
 assuming.
 
+## Flink, ksqlDB, and Kafka Connect
+
+Application-level design/review for these three, same research-first rule
+as everything else — SQL syntax, connector configs, and operators change
+across versions.
+
+**ksqlDB**: streams vs. tables semantics, push vs. pull query choice,
+materialized views for pull queries, `WITH` clause config (key format,
+value format, partitions), joins requiring co-partitioning, windowed
+aggregations (tumbling/hopping/session) and their retention, and how a
+persistent query maps to an underlying Kafka Streams app (so Streams
+pitfalls below still apply). Retrieve current
+[ksqlDB syntax reference](https://docs.ksqldb.io/en/latest/developer-guide/ksqldb-reference/)
+before writing non-trivial statements.
+
+**Flink (Confluent Cloud for Apache Flink / self-managed Flink SQL)**:
+watermark strategy and allowed lateness (drives correctness of windowed/time
+based logic), event-time vs. processing-time choice, checkpointing/state
+backend for exactly-once, and Table API vs. DataStream API vs. Flink SQL
+fit for the task. Retrieve current
+[Flink SQL docs](https://docs.confluent.io/cloud/current/flink/index.html)
+(or [Apache Flink docs](https://nightlies.apache.org/flink/flink-docs-stable/)
+for self-managed) before citing operator/function names.
+
+**Kafka Connect**: source vs. sink connector fit, converter choice (Avro/
+Protobuf/JSON Schema vs. plain JSON — must match what producers/consumers
+on the topic expect), single message transforms (SMTs) and their chaining
+order, `errors.tolerance`/dead-letter-queue config for bad records, and
+exactly-once support (per-connector, not universal — verify for the
+specific connector). For Confluent Cloud, check whether a fully-managed
+connector exists before designing a custom one.
+
+### Pitfalls specific to these
+
+- ksqlDB: pull query issued against a stream (not a materialized table) —
+  will fail or behave unexpectedly.
+- ksqlDB/Streams joins on mismatched keys/partition counts (not
+  co-partitioned) — join silently returns no results instead of erroring.
+- Flink: watermark/lateness misconfigured — late events silently dropped
+  instead of handled, or windows never fire.
+- Flink: checkpointing disabled or interval too large for the exactly-once
+  guarantee the pipeline claims to provide.
+- Connect: SMT chain ordering wrong (e.g., a field-rename after a filter
+  that already needed the original name) — SMTs apply in the order listed.
+- Connect: no `errors.tolerance=all` + DLQ configured — one bad record can
+  halt the whole connector task.
+- Connect: assuming a connector supports exactly-once without checking —
+  it's connector-specific (verify against that connector's docs).
+
 ## Common pitfalls to check for
 
 - Missing `acks=all` + `min.insync.replicas` for durability, or missing
