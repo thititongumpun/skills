@@ -77,6 +77,12 @@ full request. Before committing to an approach it must, brainstorming-style
   depends on. Whatever the planner learned and didn't write down is lost
   between phases.
 
+If the approach is genuinely uncertain — unfamiliar API, unproven
+integration, a performance assumption the whole design rests on — make
+task 1 a thin end-to-end spike whose pass condition settles that question,
+and make the rest of the plan conditional on it. Being wrong about the
+approach costs every task after it, not just the first one.
+
 Every task carries a **pass condition that can fail**: the exact command,
 file shape, or comparison that decides it's done. "Looks right" is not a
 pass condition — a task whose done-ness can't be checked is a task the
