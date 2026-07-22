@@ -77,6 +77,11 @@ full request. Before committing to an approach it must, brainstorming-style
   depends on. Whatever the planner learned and didn't write down is lost
   between phases.
 
+Every task carries a **pass condition that can fail**: the exact command,
+file shape, or comparison that decides it's done. "Looks right" is not a
+pass condition — a task whose done-ness can't be checked is a task the
+executor gets to declare finished on its own say-so.
+
 It must return an ordered task list, each task marked `complex: true` only
 when it genuinely needs strong reasoning — ambiguous requirements,
 architecture-sensitive, security/correctness-critical. Don't mark things
@@ -85,8 +90,12 @@ complex by default; most mechanical, well-scoped tasks aren't.
 ## Phase 2: Execute
 
 For each planned task, deploy one Agent call:
-- One clear objective per subagent; require it to report exactly what it
-  changed and how it verified it.
+- One clear objective per subagent, with its pass condition quoted
+  verbatim; require it to report exactly what it changed and the result of
+  running that check.
+- Subagents don't spawn subagents. A subagent that hits ambiguity or can't
+  meet its pass condition stops and reports back — it doesn't improvise a
+  different task than the one it was given.
 - `model`: omit for normal tasks (inherits session default). Set
   `model: "opus"` (or `"fable"`, matching Phase 1) only for tasks flagged
   `complex: true`.
@@ -109,7 +118,10 @@ nothing is not a clean review. For any bug it finds, apply
 `superpowers:systematic-debugging` discipline before reporting it: identify
 the root cause (read the actual error/logic, trace it to its source), not
 just the symptom — a finding should name the root cause and where to fix
-it, not "X looks off." Return either concrete findings (root cause + fix
+it, not "X looks off." Confirm every finding with a direct check — grep,
+diff, run it — before reporting it. Not finding evidence that something
+works is not evidence it's broken; an unverified finding sends a fix agent
+chasing a ghost and costs a whole round. Return either concrete findings (root cause + fix
 location, plus any general improvements) or confirmation everything's
 clean.
 
@@ -128,6 +140,11 @@ If Phase 3 found issues:
 
 ## Failure modes to avoid
 
+- **The one that actually happens: you do the work yourself.** Being told
+  not to isn't enough — an orchestrator holding Edit/Write drifts into
+  "this task is small, I'll just do it," and then no subagent report and
+  no cold review ever covers that change. If you're about to edit a file,
+  you've drifted; dispatch it instead.
 - Don't skip the review step, even for "simple" requests.
 - Don't keep looping fixes past the round cap.
 - Don't let a subagent's self-report substitute for the review agent
