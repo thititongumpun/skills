@@ -13,6 +13,6 @@ when working inside this repo.
 | `confluent-kafka-admin` | Administering, provisioning, securing, scaling, upgrading, or troubleshooting a Kafka/Confluent cluster; `confluent` CLI, Confluent Cloud API, or Confluent Terraform provider work. |
 | `confluent-kafka-developer` | Designing an event/topic/schema model, explaining a Kafka concept, diagramming a Kafka/Streams flow, or reviewing producer/consumer/Streams/Connect code. |
 | `pptx-diagram` | Turning a Mermaid diagram into an editable PowerPoint slide. Requires [officecli](https://officecli.ai). |
-| `autopilot` | Self-driving a multi-step task end to end. **Claude Code only** — needs subagents and TodoWrite; skip it elsewhere. |
+| `autopilot` | Self-driving a multi-step task end to end. Needs an agent runtime that can spawn subagents — **Claude Code only** in practice; skip it elsewhere. (A todo tool is used for progress when present; the skill falls back to a reprinted checklist without one.) |
 
 New skill added to this repo? Add a row here too.

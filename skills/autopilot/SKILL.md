@@ -12,9 +12,9 @@ Default planner/reviewer model is `opus`. Use `fable` instead only if the
 user asked for it. Default fix-loop cap is 2 rounds unless the user says
 otherwise.
 
-Shell commands — yours and every subagent's — go through `rtk` (`rtk git
-status`, `rtk cargo test`): same output, far fewer tokens. Say so in each
-subagent's brief; they don't inherit this instruction.
+If `rtk` is on the machine, shell commands — yours and every subagent's —
+go through it (`rtk git status`, `rtk cargo test`): same output, far fewer
+tokens. Say so in each subagent's brief; they don't inherit this.
 
 ## Progress reporting
 
@@ -120,16 +120,16 @@ perfectly executed wrong plan is still wrong. It must read the actual
 changed files itself — not just trust the reports — and run the project's
 own check (tests / typecheck / build, whatever the repo uses), including
 the real output in its findings. A review that read everything but ran
-nothing is not a clean review. For any bug it finds, apply
-`superpowers:systematic-debugging` discipline before reporting it: identify
-the root cause (read the actual error/logic, trace it to its source), not
-just the symptom — a finding should name the root cause and where to fix
-it, not "X looks off." Confirm every finding with a direct check — grep,
-diff, run it — before reporting it. Not finding evidence that something
-works is not evidence it's broken; an unverified finding sends a fix agent
-chasing a ghost and costs a whole round. Return either concrete findings (root cause + fix
-location, plus any general improvements) or confirmation everything's
-clean.
+nothing is not a clean review.
+
+For any bug it finds, apply `superpowers:systematic-debugging` discipline
+before reporting it: confirm the fault with a direct check — grep, diff,
+run it — and trace it to its root cause. A finding names the root cause
+and where to fix it, not "X looks off." Not finding evidence that
+something works is not evidence it's broken; an unverified finding sends a
+fix agent chasing a ghost and costs a whole round. Return either concrete
+findings (root cause + fix location, plus any general improvements) or
+confirmation everything's clean.
 
 ## Phase 4: Fix loop
 
@@ -153,8 +153,6 @@ If Phase 3 found issues:
   you've drifted; dispatch it instead.
 - Don't skip the review step, even for "simple" requests.
 - Don't keep looping fixes past the round cap.
-- Don't let a subagent's self-report substitute for the review agent
-  actually re-reading the files.
 - Don't escalate every task to Opus/Fable — only ones actually flagged
   complex in Phase 1.
 - A failed or empty-handed task agent blocks its dependents — report them
