@@ -1,0 +1,16 @@
+{
+  "name": "thititongumpun",
+  "owner": {
+    "name": "thititongumpun"
+  },
+  "description": "thititongumpun's Claude Code skills.",
+  "plugins": [
+    {
+      "name": "skills",
+      "source": "./",
+      "description": "Personal Claude Code skills — self-orchestrated task execution and more.",
+      "category": "engineering",
+      "keywords": ["engineering", "skills", "orchestration"]
+    }
+  ]
+}

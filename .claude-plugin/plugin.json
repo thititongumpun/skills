@@ -1,0 +1,12 @@
+{
+  "name": "skills",
+  "version": "0.1.0",
+  "description": "Personal Claude Code skills — self-orchestrated task execution and more.",
+  "author": {
+    "name": "thititongumpun"
+  },
+  "repository": "https://github.com/thititongumpun/skills",
+  "license": "MIT",
+  "keywords": ["engineering", "skills", "orchestration"],
+  "skills": ["./skills/autopilot"]
+}
