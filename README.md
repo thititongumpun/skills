@@ -4,7 +4,7 @@ Personal Claude Code skills.
 
 ## Install
 
-Copy the skill files with the `skills.sh` installer:
+Copy the skill files with [skills.sh](https://skills.sh) (the `skills` CLI package — not a shell script):
 
 ```bash
 npx skills@latest add thititongumpun/skills
