@@ -24,17 +24,20 @@ proceed to Phase 1 once the request is concrete enough to plan.
 ## Phase 1: Plan
 
 Deploy one Agent call, `model: "opus"` (or `"fable"`), given the user's
-full request. Before committing to an approach, it must identify the best
-practice or recommended pattern for this kind of task — check the
-codebase's existing conventions, relevant docs (e.g. via context7 or
-project docs), and established patterns for the domain — and design the
-task list around that, not just the first approach that comes to mind. If
-there are multiple reasonable approaches, it should pick the one it
-recommends and say briefly why, rather than presenting options back to the
-orchestrator. It must return an ordered task list, each task marked
-`complex: true` only when it genuinely needs strong reasoning — ambiguous
-requirements, architecture-sensitive, security/correctness-critical. Don't
-mark things complex by default; most mechanical, well-scoped tasks aren't.
+full request. Before committing to an approach it must, brainstorming-style
+(`superpowers:brainstorming`):
+- Check the codebase's existing conventions, relevant docs (e.g. via
+  context7 or project docs), and established patterns for the domain.
+- Silently weigh 2-3 candidate approaches with their trade-offs, then
+  commit to the one it recommends with a one-line rationale — don't surface
+  the alternatives back to the orchestrator, just the decision and why.
+- Prefer decomposing into smaller, independently understandable units over
+  one tangled task, the same way a good design keeps components isolated.
+
+It must return an ordered task list, each task marked `complex: true` only
+when it genuinely needs strong reasoning — ambiguous requirements,
+architecture-sensitive, security/correctness-critical. Don't mark things
+complex by default; most mechanical, well-scoped tasks aren't.
 
 ## Phase 2: Execute
 
@@ -51,18 +54,26 @@ For each planned task, deploy one Agent call:
 
 Deploy one Agent call on the Phase 1 model, given the full task list and
 every execution report. It must read the actual changed files itself — not
-just trust the reports — and return either concrete findings (bugs +
-improvements) or confirmation everything's clean.
+just trust the reports. For any bug it finds, apply
+`superpowers:systematic-debugging` discipline before reporting it: identify
+the root cause (read the actual error/logic, trace it to its source), not
+just the symptom — a finding should name the root cause and where to fix
+it, not "X looks off." Return either concrete findings (root cause + fix
+location, plus any general improvements) or confirmation everything's
+clean.
 
 ## Phase 4: Fix loop
 
 If Phase 3 found issues:
 1. Deploy one Agent call per finding to fix it (parallel where findings are
-   independent).
+   independent). Each fix agent addresses the root cause Phase 3 identified
+   — one focused change, not a scattershot of unrelated tweaks.
 2. Re-deploy the Phase 3 review agent.
-3. Repeat from step 1 up to the round cap. If still not clean at the cap,
-   stop and report the remaining findings to the user rather than looping
-   forever.
+3. Repeat from step 1 up to the round cap. If the same finding is still not
+   resolved at the cap, treat that as a systematic-debugging signal — 3+
+   failed fixes on the same issue usually means the approach itself is
+   wrong, not that it needs one more patch. Stop and report the remaining
+   findings (with what was tried) to the user instead of looping forever.
 
 ## Failure modes to avoid
 
