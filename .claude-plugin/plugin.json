@@ -12,6 +12,7 @@
     "./skills/autopilot",
     "./skills/confluent-kafka-admin",
     "./skills/confluent-kafka-developer",
+    "./skills/fetch-403",
     "./skills/pptx-diagram"
   ]
 }
