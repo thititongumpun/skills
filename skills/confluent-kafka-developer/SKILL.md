@@ -61,6 +61,39 @@ planned, hand off to the `autopilot` skill.
 config-specific, verify current defaults/behavior against docs rather than
 assuming.
 
+## Confluent Cloud (developer-facing)
+
+For provisioning/RBAC/networking use `confluent-kafka-admin` — this is the
+"how does my application code talk to Confluent Cloud" side.
+
+- **Client connection config**: `bootstrap.servers` (cloud endpoint),
+  `security.protocol=SASL_SSL`, `sasl.mechanism=PLAIN`, and API
+  key/secret as `sasl.jaas.config` (or the client library's equivalent
+  cloud-config helper, e.g. `confluent-kafka-python`'s cloud config
+  block). Never hardcode API keys/secrets in source — use env vars or a
+  secrets manager, same as any credential.
+- **Schema Registry**: Confluent Cloud Schema Registry has its own
+  endpoint and API key/secret pair, separate from the Kafka cluster's —
+  a common source of "works for produce, fails for schema registration"
+  bugs when the two get conflated.
+- **Local dev/testing**: `confluent kafka topic produce/consume` for quick
+  manual testing against a Cloud topic, `confluent flink shell` for
+  interactive Flink SQL against Cloud compute pools, and `confluent local`
+  for spinning up an ephemeral local broker when you want to test without
+  touching Cloud at all.
+- **Fully-managed services**: prefer a Confluent Cloud fully-managed
+  connector, Cloud ksqlDB app, or Cloud Flink compute pool over
+  self-hosting the equivalent, unless there's a specific reason
+  (unsupported connector, custom SMT, cost) — check current
+  [Cloud connector](https://docs.confluent.io/cloud/current/connectors/index.html)
+  and [Cloud Flink](https://docs.confluent.io/cloud/current/flink/index.html)
+  docs for what's supported before assuming self-managed is required.
+- **Cluster Linking**: if the design spans multiple Cloud clusters/regions
+  or a hybrid Cloud+self-managed setup, that's a `confluent-kafka-admin`
+  concern for the linking setup itself, but affects application design
+  (topic availability, read-your-writes across linked clusters) — flag it
+  rather than silently assuming a single cluster.
+
 ## Flink, ksqlDB, and Kafka Connect
 
 Application-level design/review for these three, same research-first rule
