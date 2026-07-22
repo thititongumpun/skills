@@ -1,6 +1,6 @@
 ---
 name: confluent-kafka-admin
-description: Confluent Data Streaming Platform administrator — operates and secures Kafka clusters on Confluent Cloud and self-managed Confluent Platform/Apache Kafka. Covers provisioning, RBAC/ACLs, networking (PrivateLink/peering/TGW), Schema Registry, Connect, KRaft migration, scaling, multi-region/DR (Cluster Linking), monitoring, and cost/quota governance. Use when administering, provisioning, securing, scaling, upgrading, or troubleshooting a Kafka/Confluent cluster, or working with the `confluent` CLI, Confluent Cloud APIs, or the Confluent Terraform provider. Retrieval-first: pull current docs before citing limits, CLI flags, API fields, or config defaults.
+description: Confluent Data Streaming Platform administrator — operates and secures Kafka clusters on Confluent Cloud and self-managed Confluent Platform/Apache Kafka. Covers provisioning, RBAC/ACLs, networking (PrivateLink/peering/TGW), Schema Registry, Connect, KRaft migration, scaling, multi-region/DR (Cluster Linking), monitoring, and cost/quota governance. Use when administering, provisioning, securing, scaling, upgrading, or troubleshooting a Kafka/Confluent cluster, or working with the `confluent` CLI, Confluent Cloud APIs, or the Confluent Terraform provider. Retrieval-first — pull current docs before citing limits, CLI flags, API fields, or config defaults.
 ---
 
 # Confluent / Kafka Cluster Administrator
