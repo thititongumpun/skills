@@ -26,9 +26,12 @@ version-specific.
    on terminology/glossary questions, not as a substitute for the actual
    page. Also check [kafka.apache.org/documentation](https://kafka.apache.org/documentation/)
    for OSS-specific behavior, [developer.confluent.io](https://developer.confluent.io/)
-   for patterns/courses/event-driven design guides, and the relevant client
-   library docs (Java, Python, Go, .NET, librdkafka) — use context7 if
-   available for exact client API surfaces.
+   for patterns/courses/event-driven design guides,
+   [Apache Flink docs](https://nightlies.apache.org/flink/flink-docs-stable/)
+   for engine-level Flink behavior (SQL/Table API/DataStream reference,
+   connectors, state, watermarks — no `llms.txt`, fetch the specific page),
+   and the relevant client library docs (Java, Python, Go, .NET,
+   librdkafka) — use context7 if available for exact client API surfaces.
 2. **Community sources when docs don't settle it**: a specific error
    message, an edge case, or "does X actually behave like Y in practice" —
    search the [Confluent Community Forum](https://forum.confluent.io/),
@@ -116,14 +119,31 @@ pitfalls below still apply). Retrieve current
 [ksqlDB syntax reference](https://docs.ksqldb.io/en/latest/developer-guide/ksqldb-reference/)
 before writing non-trivial statements.
 
-**Flink (Confluent Cloud for Apache Flink / self-managed Flink SQL)**:
-watermark strategy and allowed lateness (drives correctness of windowed/time
-based logic), event-time vs. processing-time choice, checkpointing/state
-backend for exactly-once, and Table API vs. DataStream API vs. Flink SQL
-fit for the task. Retrieve current
-[Flink SQL docs](https://docs.confluent.io/cloud/current/flink/index.html)
-(or [Apache Flink docs](https://nightlies.apache.org/flink/flink-docs-stable/)
-for self-managed) before citing operator/function names.
+**Flink (Confluent Cloud for Apache Flink / self-managed Flink)**:
+watermark strategy and allowed lateness (drives correctness of windowed/
+time-based logic), event-time vs. processing-time choice,
+checkpointing/state backend for exactly-once, and Table API vs. DataStream
+API vs. Flink SQL fit for the task.
+
+*Which docs:* Confluent Cloud Flink for the managed surface — catalogs,
+compute pools, statements, what's supported — via
+[Cloud Flink docs](https://docs.confluent.io/cloud/current/flink/index.html);
+[Apache Flink docs](https://nightlies.apache.org/flink/flink-docs-stable/)
+for engine semantics (watermarks, state, joins, functions) and anything
+self-managed. Engine behavior is shared, the managed surface is not — don't
+cite a Cloud-only feature for a self-managed deployment, or an Apache
+connector/UDF as available on Cloud, without checking. `flink-docs-stable`
+tracks whatever the current release is; name the version when a behavior is
+version-specific.
+
+*Confluent Cloud specifics worth designing around:* the catalog model maps
+environment → catalog and Kafka cluster → database, so every topic is
+already queryable as a table with its Schema Registry schema attached — no
+DDL to read an existing topic. Statements run on a compute pool (the
+billing/scaling unit) and long-running ones keep running after you
+disconnect. Verify current support (Table API, UDFs, connectors to
+non-Kafka systems, private networking) against the docs rather than
+assuming parity with open-source Flink.
 
 **Kafka Connect**: source vs. sink connector fit, converter choice (Avro/
 Protobuf/JSON Schema vs. plain JSON — must match what producers/consumers
@@ -143,6 +163,12 @@ connector exists before designing a custom one.
   instead of handled, or windows never fire.
 - Flink: checkpointing disabled or interval too large for the exactly-once
   guarantee the pipeline claims to provide.
+- Flink SQL: changelog mode mismatched with the sink topic — a query
+  producing updates/retractions written as append-only (or an upsert sink
+  with no primary key declared) silently produces a topic that doesn't say
+  what the pipeline thinks it says.
+- Flink: unbounded state from a join or aggregation with no TTL/window —
+  state grows forever, and on Cloud that's a bill as well as a failure.
 - Connect: SMT chain ordering wrong (e.g., a field-rename after a filter
   that already needed the original name) — SMTs apply in the order listed.
 - Connect: no `errors.tolerance=all` + DLQ configured — one bad record can
