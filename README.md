@@ -51,6 +51,9 @@ needs subagents and TodoWrite.
   explain, diagram, plan, and review Kafka application work. Researches
   official docs plus community sources (forum, Stack Overflow, GitHub)
   before answering.
+- **fetch-403** — recover a page after the fetcher gets 403: curl fallback,
+  machine-readable endpoints (`llms.txt`, raw GitHub, APIs), and the rule
+  against silently answering from memory when a source stays blocked.
 - **pptx-diagram** — Mermaid → PowerPoint via `officecli`, producing real
   editable shapes and connectors (not a flat image) for flowchart and
   sequence diagrams. Requires [officecli](https://officecli.ai).
