@@ -11,6 +11,7 @@
   "skills": [
     "./skills/autopilot",
     "./skills/confluent-kafka-admin",
-    "./skills/confluent-kafka-developer"
+    "./skills/confluent-kafka-developer",
+    "./skills/pptx-diagram"
   ]
 }

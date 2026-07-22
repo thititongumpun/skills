@@ -32,3 +32,6 @@ Or install as a native Claude Code plugin (updates when this repo changes):
   explain, diagram, plan, and review Kafka application work. Researches
   official docs plus community sources (forum, Stack Overflow, GitHub)
   before answering.
+- **pptx-diagram** — Mermaid → PowerPoint via `officecli`, producing real
+  editable shapes and connectors (not a flat image) for flowchart and
+  sequence diagrams. Requires [officecli](https://officecli.ai).
