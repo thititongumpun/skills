@@ -40,6 +40,9 @@ needs subagents and TodoWrite.
 
 - **autopilot** — plans a task, runs it through subagents, reviews the
   result, loops fixes until clean. Claude Code only.
+- **yolo** — unattended task execution: asks up front, then plan → spawn
+  subagents → execute → summarize fully silent, skips & logs unsafe actions.
+  Claude Code only.
 - **confluent-kafka-admin** — Kafka/Confluent *cluster* work: provisioning,
   RBAC/ACLs, networking, scaling, DR, cost.
 - **confluent-kafka-developer** — Kafka/Confluent *application* work:

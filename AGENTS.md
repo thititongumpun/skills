@@ -15,5 +15,6 @@ when working inside this repo.
 | `fetch-403` | A fetch tool returns 403 / an empty body / a bot-check page on a URL you still need. |
 | `pptx-diagram` | Turning a Mermaid diagram into an editable PowerPoint slide. Requires [officecli](https://officecli.ai). |
 | `autopilot` | Self-driving a multi-step task end to end. Needs an agent runtime that can spawn subagents — **Claude Code only** in practice; skip it elsewhere. (A todo tool is used for progress when present; the skill falls back to a reprinted checklist without one.) |
+| `yolo` | Running a multi-step task unattended (eating/sleeping) — asks everything up front, then plans/executes via subagents fully silent, skips unsafe actions and logs them. Claude Code only, like autopilot. |
 
 New skill added to this repo? Add a row here too.
