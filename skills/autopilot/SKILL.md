@@ -22,24 +22,38 @@ The user is not driving this loop, so tell them where it is without being
 asked.
 
 - After Phase 1, print the full numbered task list, marking which tasks are
-  flagged complex. That's the total scope — the user can't judge "remaining"
-  until they've seen it.
+  flagged complex or simple and the model each will run on. That's the total
+  scope — the user can't judge "remaining" until they've seen it, and a task
+  tiered wrong is easiest to catch before it runs.
 - If `TodoWrite` is available, mirror the task list into it (one todo per
   task, plus one for Review) and keep statuses current — that's the native
-  progress UI.
+  progress UI. Carry the model in each todo's text too (`Add DLQ handling
+  [opus]`); the todo list is what the user actually watches.
 - If it isn't available, reprint the checklist as state changes, so the
   user always sees what's done and what's left:
 
   ```
-  [3/7 done] Executing
-  ✅ 1. Define Avro schema + compatibility mode
-  ✅ 2. Add idempotent producer config
-  ✅ 3. Wire Schema Registry client
-  ⏳ 4. Add DLQ handling            (complex → opus)
-  ⬜ 5. Streams topology tests
-  ⬜ 6. Update docs
-  ⬜ 7. Review
+  [3/8 done] Executing
+  ✅ 1. Define Avro schema + compatibility mode   [sonnet]
+  ✅ 2. Add idempotent producer config            [sonnet]
+  ✅ 3. Wire Schema Registry client               [sonnet]
+  ⏳ 4. Add DLQ handling                          [opus]    (complex)
+  ⬜ 5. Streams topology tests                    [sonnet]
+  ⬜ 6. Bump connector version                    [haiku]   (simple)
+  ⬜ 7. Update docs                               [haiku]   (simple)
+  ⬜ 8. Review                                    [opus]
   ```
+
+  **Every row names the model that runs it** — no blanks, no "inherits the
+  default." Resolve the session default to its actual name and print that,
+  so the user can see the whole tiering at a glance instead of reverse-
+  engineering it from which rows are annotated. Keep the tier flag in
+  parentheses after the model where one applies.
+
+  Same rule for the phases the user doesn't see as tasks: the Phase 1 plan
+  line and Phase 4 fix agents carry their model too (`[opus] planning`,
+  `Fixing 3 findings [opus]`). If a `simple` task got redispatched (Phase 2),
+  show both: `[haiku → sonnet] (simple, retried)`.
 
   Reprint on each state change, not on every tool call — one refreshed
   checklist per batch of task completions is enough.
@@ -93,6 +107,16 @@ when it genuinely needs strong reasoning — ambiguous requirements,
 architecture-sensitive, security/correctness-critical. Don't mark things
 complex by default; most mechanical, well-scoped tasks aren't.
 
+A task may instead be marked `simple: true` when all three hold: it touches
+**one known file** whose path the plan already names, the change is fully
+specified in the task itself (no codebase search, no convention to infer,
+no design choice left open), and the pass condition is a single command or
+exact string check. Renames, config/version bumps, adding a declared import,
+doc and comment text. If a task needs to *find* where to change something,
+read a second file to know what to write, or judge whether the result is
+right, it isn't simple — leave it unmarked. `simple` and `complex` are
+mutually exclusive; when unsure, leave both off.
+
 ## Phase 2: Execute
 
 For each planned task, deploy one Agent call:
@@ -104,7 +128,13 @@ For each planned task, deploy one Agent call:
   different task than the one it was given.
 - `model`: omit for normal tasks (inherits session default). Set
   `model: "opus"` (or `"fable"`, matching Phase 1) only for tasks flagged
-  `complex: true`.
+  `complex: true`, and `model: "haiku"` only for tasks flagged
+  `simple: true`.
+- If a `haiku` agent misses its pass condition or reports back confused
+  about the task, redispatch that one task once with `model` omitted before
+  treating it as failed — a mis-tiered task is cheap to retry and shouldn't
+  block its dependents. Two misses on the same task is a plan problem, not
+  a model problem: report it.
 - Dispatch independent tasks in parallel (single message, multiple Agent
   calls) — but only when they clearly touch different files; two agents
   editing the same file clobber each other and the review only ever sees
@@ -155,5 +185,8 @@ If Phase 3 found issues:
 - Don't keep looping fixes past the round cap.
 - Don't escalate every task to Opus/Fable — only ones actually flagged
   complex in Phase 1.
+- Don't downgrade to Haiku to save tokens on a task that only *looks*
+  mechanical. The cost of a wrong tier is a whole failed task plus a retry;
+  the cost of leaving `simple` off is a few tokens. Unmarked is the default.
 - A failed or empty-handed task agent blocks its dependents — report them
   as blocked, don't dispatch them anyway just to keep the loop moving.

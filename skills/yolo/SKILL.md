@@ -40,7 +40,10 @@ Planner/reviewer default `model: "opus"`. Escalate the *planner* to
 `model: "fable"` when the task is very complex or needs expert / professional
 judgment (opus itself may recommend this in Phase 1). Execution subagents
 inherit the session default; escalate a task's executor to the planner's model
-only when Phase 1 flagged that task `complex: true`.
+only when Phase 1 flagged that task `complex: true`, and drop it to
+`model: "haiku"` only when Phase 1 flagged that task `simple: true` (autopilot
+Phase 1 defines the bar). Unattended means a mis-tiered task costs a silent
+retry — leave both flags off when unsure.
 
 ## Override 3 — Safety: skip & log, never touch, never wait
 
@@ -59,7 +62,9 @@ Unattended means no confirmer is present, so defer instead of confirm.
 The user returns to a finished run, so end with a single report:
 
 - **Done** — tasks completed, fix rounds used, whether the final review came
-  back clean.
+  back clean, and any `simple`-flagged task that missed on haiku and had to be
+  redispatched (the user slept through it; a repeat offender means the plan's
+  `simple` bar is set too loose).
 - **Assumptions made** — every ambiguity you resolved yourself (Override 1).
 - **Deferred (unsafe) — do this when you're back** — the Override 3 list, each
   with the command and why.
