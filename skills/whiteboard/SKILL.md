@@ -52,6 +52,26 @@ It does not, at this version.)
 Never hand-author element coordinates. Converting mermaid takes one call;
 placing boxes by hand costs more tokens than the design did.
 
+### Two rules that decide whether the diagram is readable at all
+
+**Keep every node label short — three or four words.** The canvas ships only
+the `Assistant` UI fonts; **Excalifont, which renders canvas text, isn't
+bundled**, so text falls back to a wider font while the boxes were sized from
+the narrower metrics. Labels overflow and clip about a character off each
+end. `entrypoint.sh` is fine; `entrypoint.sh (from client/entrypoint.sh)`
+renders as `ntrypoint.sh (from client/entrypoint.sh`. Overflow scales with
+length, so short labels are the whole mitigation. Put the detail in your
+prose, not in the box.
+
+**Avoid `subgraph`.** Its title is container-bound text, which Excalidraw
+re-centres inside the box on every render — so a subgraph around a single
+node prints the title straight through that node's label, and a tall
+subgraph drops its title into the middle of the diagram across the arrows.
+You cannot fix it afterwards: `update_element` on a bound text's x/y is
+silently reverted on the next sync. If grouping matters, say it in the
+summary or encode it in the node names (`agent :9000`), don't draw a box
+around it.
+
 ## The canvas carries the picture, the terminal carries the decision
 
 Not a preference, a division of labour. The canvas gets anything spatial:
@@ -141,6 +161,23 @@ what you're about to do, snapshot, and let them agree first.
 Converted nodes keep their mermaid IDs — a node written `API[Refund API]`
 becomes an element with id `API`. Use those ids to talk about the diagram
 and to update single elements later without touching anything else.
+
+**Then look at it before you hand it over.** `get_canvas_screenshot` and
+actually read the image. `describe_scene` tells you the elements exist; it
+cannot tell you the labels are clipped, the arrows cross, or a title is
+printed through a node. Those are exactly the faults that make a user say
+"it's hard to see", and they are invisible in the geometry — the stored
+widths look fine while the render overflows.
+
+If it's unreadable, fix it in the mermaid and reconvert **now**, before
+they've touched anything. Once they start editing, reconverting eats their
+work and you're stuck with whatever you shipped.
+
+**Export as soon as it's worth keeping.** `export_scene` to a file the
+moment the diagram is right, not only at Phase 6. The canvas is memory-only
+and dies with the server — a session that ends, a crash, or the SessionEnd
+hook takes the scene *and* every `snapshot_scene` with it, because snapshots
+live in that same memory. The file on disk is the only thing that survives.
 
 ## Phase 4: Hand over, then read back what they changed
 
@@ -337,8 +374,10 @@ Everything goes through the MCP; there is no HTML to write.
 
 ```
 snapshot_scene            name it, before any mermaid conversion
-create_from_mermaid       the flowchart/sequence/class source
+create_from_mermaid       short labels, no subgraphs
 describe_scene            confirm it landed, and what the element ids are
+get_canvas_screenshot     LOOK at it — clipping is invisible in describe
+export_scene              to a file, as soon as it's worth keeping
   -> hand over, end turn, let them edit
 describe_scene            after ~1.5s, read their changes
 update_element            fix single nodes by id, never a full redraw
@@ -381,6 +420,15 @@ If a call fails with exit code 4, no browser tab is open. Ask them to open
 - **Reporting an edit you didn't verify.** If `describe_scene` shows the
   same layout you drew, say nothing moved. Inventing "I see you moved X" is
   worse than the read-only canvas this replaced.
+- **Handing over a diagram you never looked at.** `describe_scene` returning
+  52 elements is not evidence anyone can read them. Screenshot it and look.
+  Clipped labels don't show up in the geometry.
+- **Long labels and subgraphs.** The two reliable ways to produce an
+  unreadable canvas. See the rules above — both are renderer limits, not
+  style preferences.
+- **Trusting `snapshot_scene` as a backup.** Snapshots are in the same
+  memory as the scene; whatever kills the canvas kills them too. Only an
+  exported file is a backup.
 - **A duplicate canvas on 3000** (upstream #75) — the agent and the human
   end up on different servers and neither sees the other. If `describe_scene`
   disagrees with what they say is on screen, suspect this first.
