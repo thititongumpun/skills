@@ -18,6 +18,21 @@ Or install as a native Claude Code plugin (updates when this repo changes):
 /plugin install skills@thititongumpun
 ```
 
+### Needed for whiteboard's canvas: superpowers
+
+`whiteboard` draws in the browser by driving the visual companion server
+that ships inside [superpowers](https://github.com/obra/superpowers) —
+reused in place, not vendored, so you always get the current version:
+
+```
+/plugin install superpowers@claude-plugins-official
+```
+
+Without it the skill still works, it just can't draw: it degrades to a
+mermaid fence in the terminal and says so. Needs `node` on `PATH` and a
+browser on the same machine. Explain mode additionally publishes a
+shareable page, which needs the Artifact tool.
+
 ### Optional: context7
 
 Several skills query [context7](https://context7.com) for exact library API
@@ -46,10 +61,12 @@ Read the matching file in full before acting on its topic:
 ```
 
 Caveats: discovery is manual (the agent loads a skill because `AGENTS.md` says
-to, not by matching descriptions), **autopilot is Claude Code only** — it
-needs subagents and TodoWrite — and the context7 step above assumes your agent
-has that MCP server wired up itself; the `/plugin install` line is Claude Code
-syntax.
+to, not by matching descriptions), and both `/plugin install` lines above are
+Claude Code syntax — elsewhere you'd wire up the context7 MCP server yourself.
+**Claude Code only**: `autopilot` and `yolo` (they need subagents and
+TodoWrite), and `whiteboard`'s canvas and its shareable page (they need the
+superpowers server and the Artifact tool). Whiteboard's thinking still works
+anywhere — you just get the mermaid fence instead of the picture.
 
 ## Skills
 
@@ -65,7 +82,8 @@ syntax.
 - **whiteboard** — requirements → a diagram in your browser you can correct,
   plus pros/cons and a pick when more than one design fits. Or
   `/whiteboard explain <repo|PR|task>` to diagram work that already exists
-  and publish a shareable page for your team. Never implements.
+  and publish a shareable page for your team. Never implements. Needs
+  superpowers for the canvas (see above).
 - **fetch-403** — recover a page the fetcher was refused, without quietly
   falling back to memory.
 - **pptx-diagram** — Mermaid → editable PowerPoint shapes via
