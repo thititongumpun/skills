@@ -30,16 +30,31 @@ version-specific.
    [Apache Flink docs](https://nightlies.apache.org/flink/flink-docs-stable/)
    for engine-level Flink behavior (see the Flink section for which docs
    answer what), and the relevant client library docs (Java, Python, Go,
-   .NET, librdkafka) — use context7 if available for exact client API
-   surfaces.
-2. **Community sources when docs don't settle it**: a specific error
+   .NET, librdkafka).
+2. **context7 for library and API surfaces** — exact client config property
+   names, method signatures, Flink/Streams DSL operators. It is faster than
+   fetching doc pages and never 403s. `resolve-library-id` first, then
+   `query-docs`; one concept per query, three calls max. Known-good IDs:
+   `/confluentinc/librdkafka` (and the C/Python/Go/.NET clients built on it),
+   `/apache/kafka` (broker/topic configs), `/apache/flink`, and the Java
+   client javadoc, which is indexed per release as
+   `/websites/javadoc_io_doc_org_apache_kafka_kafka-clients_<version>`.
+   **Pin the version deliberately.** `resolve-library-id` ranks by
+   documentation coverage, not recency — asking it for Apache Flink returns
+   the 1.19 docs site above the 2.x ones. Read the `Versions:` list and the
+   version suffix in the ID, match it to what the project actually runs
+   (`pom.xml`/`build.gradle`, `requirements.txt`, the Cloud Flink version),
+   and pass `/org/project/version` when it matters. A 1.19 answer applied to
+   a 2.x job is a wrong answer that looks sourced.
+3. **Community sources when docs don't settle it**: a specific error
    message, an edge case, or "does X actually behave like Y in practice" —
    search the [Confluent Community Forum](https://forum.confluent.io/),
    Stack Overflow (`apache-kafka`, `confluent-platform` tags), and relevant
    GitHub issues/discussions (`apache/kafka`, `confluentinc/*`).
-3. **Cite what you find and flag conflicts**: if community info contradicts
+4. **Cite what you find and flag conflicts**: if community info contradicts
    the docs or looks version-specific/stale, say so rather than silently
-   picking one.
+   picking one. Name the version a context7 answer came from when the
+   behaviour is version-specific.
 
 ## Task modes
 
@@ -160,7 +175,9 @@ compute pools, statements, what's supported — via
 [Cloud Flink docs](https://docs.confluent.io/cloud/current/flink/index.html);
 [Apache Flink docs](https://nightlies.apache.org/flink/flink-docs-stable/)
 for engine semantics (watermarks, state, joins, functions) and anything
-self-managed — it has no `llms.txt`, so fetch the specific page. Engine
+self-managed — it has no `llms.txt`, so either fetch the specific page or
+query context7, which carries the Flink docs site per release and is the
+easier route to an exact operator or connector option. Engine
 behavior is shared, the managed surface is not — don't
 cite a Cloud-only feature for a self-managed deployment, or an Apache
 connector/UDF as available on Cloud, without checking. `flink-docs-stable`

@@ -80,7 +80,11 @@ Deploy one Agent call, `model: "opus"` (or `"fable"`), given the user's
 full request. Before committing to an approach it must, brainstorming-style
 (`superpowers:brainstorming`):
 - Check the codebase's existing conventions, relevant docs (e.g. via
-  context7 or project docs), and established patterns for the domain.
+  context7 or project docs), and established patterns for the domain. When
+  a library's exact API matters, pull it from context7 and pin the version
+  to what the project actually depends on — `resolve-library-id` ranks by
+  documentation coverage, not recency, so its top hit is often an older
+  release line. Put the resolved ID in the task so executors don't re-guess.
 - Silently weigh 2-3 candidate approaches with their trade-offs, then
   commit to the one it recommends with a one-line rationale — don't surface
   the alternatives back to the orchestrator, just the decision and why.

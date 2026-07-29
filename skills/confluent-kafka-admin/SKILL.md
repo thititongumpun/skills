@@ -19,6 +19,18 @@ actual page. For anything API-shaped, also check the
 Don't answer from memory for anything version- or account-specific — the
 index above exists precisely so you don't have to.
 
+For resource/argument-level detail, context7 beats fetching registry pages:
+`resolve-library-id` then `query-docs`, one concept per query, three calls
+max. `/confluentinc/terraform-provider-confluent` covers the provider's
+resources and arguments; `/apache/kafka` and `/confluentinc/librdkafka` cover
+broker and client configs. **Check the version.** `resolve-library-id` ranks
+by documentation coverage, not recency, so the top hit can be an older
+release line — read its `Versions:` list, match it to the pinned provider
+version in `required_providers` (or the cluster's actual Kafka version), and
+pass `/org/project/version` when the surface has changed between releases. A
+renamed argument from the wrong provider version fails at `terraform apply`,
+which is a cheap failure; a silently different default is not.
+
 ## Workflow
 
 1. **Classify the ask**: provisioning, security/RBAC, networking, scaling,

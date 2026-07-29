@@ -34,6 +34,11 @@ Once this burst is answered, yolo is **fully silent**. Phases 1–5 never call
 best judgment using codebase conventions and recorded as an **assumption** for
 the final summary — never a prompt.
 
+A library API you half-remember is not an assumption to record, it's one to
+resolve: query context7 (autopilot Phase 1 covers the how) and pin the version
+to what the project depends on. Nobody is awake to catch a plausible method
+name that doesn't exist, and it fails hours into the run.
+
 ## Override 2 — Planner model heuristic
 
 Planner/reviewer default `model: "opus"`. Escalate the *planner* to

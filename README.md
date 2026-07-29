@@ -18,6 +18,19 @@ Or install as a native Claude Code plugin (updates when this repo changes):
 /plugin install skills@thititongumpun
 ```
 
+### Optional: context7
+
+Several skills query [context7](https://context7.com) for exact library API
+surfaces (client configs, Terraform provider arguments, Mermaid syntax) and
+tell you to pin the doc version to what your project depends on. Without it
+they fall back to fetching doc pages, which works but is slower and 403s more:
+
+```
+/plugin install context7@claude-plugins-official
+```
+
+Keyless works out of the box, rate-limited; add an Upstash API key for more.
+
 ### Codex and other agents
 
 There is no plugin equivalent outside Claude Code, but `npx skills add` drops
@@ -33,8 +46,10 @@ Read the matching file in full before acting on its topic:
 ```
 
 Caveats: discovery is manual (the agent loads a skill because `AGENTS.md` says
-to, not by matching descriptions), and **autopilot is Claude Code only** — it
-needs subagents and TodoWrite.
+to, not by matching descriptions), **autopilot is Claude Code only** — it
+needs subagents and TodoWrite — and the context7 step above assumes your agent
+has that MCP server wired up itself; the `/plugin install` line is Claude Code
+syntax.
 
 ## Skills
 
@@ -47,6 +62,9 @@ needs subagents and TodoWrite.
   RBAC/ACLs, networking, scaling, DR, cost.
 - **confluent-kafka-developer** — Kafka/Confluent *application* work:
   producers/consumers, Streams, Connect, ksqlDB, Flink.
+- **whiteboard** — requirements → a diagram in your browser you can correct,
+  plus pros/cons and a pick when more than one design fits. Stops at a
+  confirmed design; never implements.
 - **fetch-403** — recover a page the fetcher was refused, without quietly
   falling back to memory.
 - **pptx-diagram** — Mermaid → editable PowerPoint shapes via
