@@ -32,20 +32,27 @@ per skill, so you get "pptx-diagram is dead" rather than "officecli missing",
 and prints the exact install command for each gap. `--fix` offers to run the
 safe ones. It never installs anything on its own.
 
-### Needed for whiteboard's canvas: superpowers
+### Needed for whiteboard's canvas: the excalidraw MCP
 
-`whiteboard` draws in the browser by driving the visual companion server
-that ships inside [superpowers](https://github.com/obra/superpowers) —
-reused in place, not vendored, so you always get the current version:
+`whiteboard` draws onto a live [Excalidraw](https://excalidraw.com) canvas
+you can edit by hand — drag a box, reroute an arrow — and then reads your
+edits back:
 
 ```
-/plugin install superpowers@claude-plugins-official
+claude mcp add excalidraw --scope user -- npx -y mcp-excalidraw-server
 ```
 
 Without it the skill still works, it just can't draw: it degrades to a
 mermaid fence in the terminal and says so. Needs `node` on `PATH` and a
-browser on the same machine. Explain mode additionally publishes a
-shareable page, which needs the Artifact tool.
+browser on the same machine — **you open `http://127.0.0.1:3000` yourself**,
+nothing opens it for you. Explain mode additionally publishes a shareable
+page, which needs the Artifact tool.
+
+⚠️ The canvas server has **no authentication and wildcard CORS**
+([#39](https://github.com/yctimlin/mcp_excalidraw/issues/39), and the fix in
+[#74](https://github.com/yctimlin/mcp_excalidraw/pull/74) is unmerged). While
+it runs, any page you visit can read or wipe your canvas. The skill therefore
+starts it on use and stops it when done — don't leave it running.
 
 ### Optional: context7
 
@@ -77,10 +84,11 @@ Read the matching file in full before acting on its topic:
 Caveats: discovery is manual (the agent loads a skill because `AGENTS.md` says
 to, not by matching descriptions), and both `/plugin install` lines above are
 Claude Code syntax — elsewhere you'd wire up the context7 MCP server yourself.
-**Claude Code only**: `autopilot` and `yolo` (they need subagents and
-TodoWrite), and `whiteboard`'s canvas and its shareable page (they need the
-superpowers server and the Artifact tool). Whiteboard's thinking still works
-anywhere — you just get the mermaid fence instead of the picture.
+**Claude Code only**: `autopilot` and `yolo` (they need subagents and a todo
+tool), and `whiteboard`'s shareable page (it needs the Artifact tool).
+Whiteboard's canvas is an MCP server, so it works in any MCP-capable agent;
+its thinking works anywhere — you just get the mermaid fence instead of the
+picture.
 
 ## Skills
 
@@ -93,11 +101,11 @@ anywhere — you just get the mermaid fence instead of the picture.
   RBAC/ACLs, networking, scaling, DR, cost.
 - **confluent-kafka-developer** — Kafka/Confluent *application* work:
   producers/consumers, Streams, Connect, ksqlDB, Flink.
-- **whiteboard** — requirements → a diagram in your browser you can correct,
-  plus pros/cons and a pick when more than one design fits. Or
-  `/whiteboard explain <repo|PR|task>` to diagram work that already exists
-  and publish a shareable page for your team. Never implements. Needs
-  superpowers for the canvas (see above).
+- **whiteboard** — requirements → a diagram you can drag around on a live
+  Excalidraw canvas, with your edits read back to you. Plus pros/cons and a
+  pick when more than one design fits. Or `/whiteboard explain <repo|PR|task>`
+  to diagram work that already exists and publish a shareable page for your
+  team. Never implements. Needs the excalidraw MCP (see above).
 - **fetch-403** — recover a page the fetcher was refused, without quietly
   falling back to memory.
 - **pptx-diagram** — Mermaid → editable PowerPoint shapes via

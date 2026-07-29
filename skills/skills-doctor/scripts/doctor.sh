@@ -17,11 +17,11 @@ DEPS=$(cat <<'EOF'
 node|hard|whiteboard|canvas server won't start
 curl|hard|fetch-403|rung 1 can't run at all
 officecli|hard|pptx-diagram|entire skill is dead, zero fallback
-jq|soft|whiteboard|superpowers path resolution; degrades to mermaid fence
 markdown|soft|fetch-403|pages come back as raw HTML instead of markdown
 gh|soft|fetch-403|no GitHub-API rung for private repo URLs
-browser|soft|whiteboard|no auto-open; you get a URL to click yourself
-superpowers|soft|whiteboard|no live canvas; degrades to mermaid fence
+browser|soft|whiteboard|the canvas needs an open tab to convert or export
+excalidraw|soft|whiteboard|no adjustable canvas; degrades to a mermaid fence
+superpowers|soft|autopilot|its planner/reviewer can't invoke brainstorming or systematic-debugging
 context7|soft|kafka admin+developer, autopilot, yolo, fetch-403, pptx-diagram|version-pinned library docs; falls back to fetching pages
 confluent|soft|confluent-kafka-admin, confluent-kafka-developer|emitted CLI commands go unverified
 terraform|soft|confluent-kafka-admin|can't fmt/validate the TF it writes
@@ -35,8 +35,9 @@ have() {
     browser)     for b in xdg-open wslview open explorer.exe; do
                    command -v "$b" >/dev/null 2>&1 && return 0
                  done; return 1 ;;
-    # ponytail: presence check only — a disabled-but-installed plugin reads as
+    # ponytail: presence check only — a registered-but-broken server reads as
     # present. Fine for an advisory row; upgrade to a real parse if it misleads.
+    excalidraw)  grep -qs 'mcp-excalidraw-server' "$HOME/.claude.json" .mcp.json 2>/dev/null ;;
     superpowers) grep -qs '"superpowers@' "$PLUGINS" ;;
     context7)    grep -qs 'context7' "$PLUGINS" "$HOME/.claude.json" .mcp.json 2>/dev/null ;;
     *)           command -v "$1" >/dev/null 2>&1 ;;
@@ -50,13 +51,12 @@ fix_for() {
     curl)      case $OS in mac) echo "brew install curl" ;; *) echo "sudo apt install curl" ;; esac ;;
     officecli) case $OS in mac) echo "brew install officecli" ;; win) echo "scoop install officecli" ;;
                            *) echo "npm install -g @officecli/officecli" ;; esac ;;
-    jq)        case $OS in mac) echo "brew install jq" ;; win) echo "scoop install jq" ;;
-                           *) echo "sudo apt install jq" ;; esac ;;
     markdown)  echo "uv tool install html2text  (or: pip install html2text)" ;;
     gh)        case $OS in mac) echo "brew install gh" ;; win) echo "scoop install gh" ;;
                            *) echo "sudo apt install gh" ;; esac ;;
     browser)   case $OS in wsl) echo "sudo apt install wslu" ;;
                            *) echo "install a desktop browser, or open the URL manually" ;; esac ;;
+    excalidraw)  echo "claude mcp add excalidraw --scope user -- npx -y mcp-excalidraw-server" ;;
     superpowers) echo "/plugin install superpowers@claude-plugins-official" ;;
     context7)    echo "/plugin install context7@claude-plugins-official" ;;
     confluent) echo "https://docs.confluent.io/confluent-cli/current/install.html" ;;
