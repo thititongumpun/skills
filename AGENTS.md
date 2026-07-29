@@ -16,6 +16,6 @@ when working inside this repo.
 | `pptx-diagram` | Turning a Mermaid diagram into an editable PowerPoint slide. Requires [officecli](https://officecli.ai). |
 | `autopilot` | Self-driving a multi-step task end to end. Needs an agent runtime that can spawn subagents — **Claude Code only** in practice; skip it elsewhere. (A todo tool is used for progress when present; the skill falls back to a reprinted checklist without one.) |
 | `yolo` | Running a multi-step task unattended (eating/sleeping) — asks everything up front, then plans/executes via subagents fully silent, skips unsafe actions and logs them. Claude Code only, like autopilot. |
-| `whiteboard` | Turning raw requirements into a diagram *before* any code — draws the flow in the browser, gets it confirmed or corrected, and compares solutions with pros/cons when there's a real fork. Stops at a confirmed design. Needs Node, a browser, and the superpowers plugin; degrades to a terminal mermaid fence without them. |
+| `whiteboard` | Two modes. *Design*: turning raw requirements into a diagram before any code — draws the flow in the browser, gets it confirmed, compares solutions with pros/cons when there's a real fork. *Explain*: diagramming work that already exists and publishing a shareable page so other people understand it. Never implements. Needs Node, a browser, and the superpowers plugin; degrades to a terminal mermaid fence without them. |
 
 New skill added to this repo? Add a row here too.

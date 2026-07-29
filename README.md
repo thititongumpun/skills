@@ -63,8 +63,9 @@ syntax.
 - **confluent-kafka-developer** — Kafka/Confluent *application* work:
   producers/consumers, Streams, Connect, ksqlDB, Flink.
 - **whiteboard** — requirements → a diagram in your browser you can correct,
-  plus pros/cons and a pick when more than one design fits. Stops at a
-  confirmed design; never implements.
+  plus pros/cons and a pick when more than one design fits. Or
+  `/whiteboard explain <repo|PR|task>` to diagram work that already exists
+  and publish a shareable page for your team. Never implements.
 - **fetch-403** — recover a page the fetcher was refused, without quietly
   falling back to memory.
 - **pptx-diagram** — Mermaid → editable PowerPoint shapes via

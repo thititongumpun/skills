@@ -1,6 +1,6 @@
 ---
 name: whiteboard
-description: Turn a pile of requirements into a diagram you can actually look at — draws the flow as a live page in your browser, gets it confirmed or corrected, and when more than one design genuinely fits, shows the trade-offs side by side and asks you to pick. Stops at a confirmed design and never implements it. Use when the user says "whiteboard this", "/whiteboard <requirements>", "draw this out", "diagram these requirements", "show me the flow", "visualize this before we build it", or hands over a spec and wants to see the shape of it first. Needs Node, a browser on the same machine, and the superpowers plugin — degrades to a mermaid fence in the terminal without them.
+description: Turn requirements or existing work into a diagram you can actually look at. Two modes — design mode draws a proposed flow in your browser, gets it confirmed, and compares solutions with pros/cons when more than one fits; explain mode reads work that already exists and publishes a shareable page so other people understand it. Never implements anything. Use when the user says "whiteboard this", "/whiteboard <requirements>", "draw this out", "diagram these requirements", "show me the flow", or "visualize this before we build it" — and for explain mode, "/whiteboard explain <repo/PR/task>", "explain what I'm working on", "document this for the team", "make a diagram to show other people", or "help them understand what I built". Needs Node, a browser, and the superpowers plugin for the live canvas; explain mode also needs the Artifact tool to publish.
 ---
 
 # Whiteboard
@@ -10,6 +10,27 @@ draw the flow in the user's browser, they tell you what's wrong, you redraw.
 When the requirements genuinely admit more than one design you show the
 trade-offs and make them choose. **You stop at a confirmed design — this
 skill never implements anything.**
+
+## Two modes, and the audience is what separates them
+
+**Design mode** — `/whiteboard <requirements>`, the default. Work that
+doesn't exist yet. The audience is the user, the question is "did I
+understand this correctly", and the output is a confirmed design. Phases 0-6
+below.
+
+**Explain mode** — `/whiteboard explain <repo, branch, PR, or task>`. Work
+that already exists. The audience is *other people*, the question is "will
+they understand this", and the output is a page you can send them. See
+"Explain mode" near the end.
+
+Pick by asking who reads the diagram. That one question settles everything
+else — how much you may assume, what altitude to draw at, and where the
+picture has to end up. Design mode is a conversation; explain mode is a
+deliverable, and the person it's for is not in the room to ask.
+
+If the user is vague ("whiteboard this repo"), ask which they want rather
+than guessing. Drawing existing code as though it were a proposal wastes
+their time and yours.
 
 ## Write mermaid once, render it twice
 
@@ -176,6 +197,72 @@ run `"$WB/stop-server.sh" "$SESSION_DIR"` if they ask.
 offer to "go ahead and build it" as a leading question. Say the design is
 confirmed and that the next move is theirs.
 
+## Explain mode: the diagram has to outlive the session
+
+Same drawing machinery, different ending — because localhost is not
+shareable. The companion server binds `127.0.0.1`, dies on idle timeout, and
+dies again when Claude Code exits. A URL you send a colleague is a URL that
+resolves to nothing on their machine. So the browser canvas is where you and
+the user *agree* on the picture; it is never the thing you hand over.
+
+(`start-server.sh` does take `--host`, and binding `0.0.0.0` is not the
+answer: the WebSocket enforces an origin match, it only reaches the same
+network, and the server is gone by tomorrow regardless. Don't reach for it.)
+
+**Step 1 — read the work before drawing it.** Explain mode has a failure the
+design mode doesn't: you can invent a plausible architecture instead of
+reporting the real one, and the audience has no way to catch it. Read the
+actual code, the actual PR diff, the actual task list. Trace one real path
+end to end. Cite files. If you're summarizing a repo you have not read, say
+so and read it first.
+
+**Step 2 — pick the altitude, because the audience decides it.** Ask who
+this is for if it isn't obvious; it changes the diagram more than any other
+input.
+
+- *Teammates who'll touch the code* — real module and service names, the
+  actual data flow, where state lives, the failure paths. Filenames earn
+  their place here.
+- *Engineers outside the project* — the seams and the contracts, not the
+  internals. What goes in, what comes out, what it depends on.
+- *Managers or stakeholders* — the business flow in their vocabulary. No
+  class names, no infrastructure. What the user does, what the system
+  promises, where the work is now.
+
+One altitude per diagram. Mixing them produces a picture that serves nobody
+— the stakeholder drowns in `KafkaConsumer` and the teammate learns nothing.
+
+**Step 3 — draft on the canvas and confirm, exactly as in Phases 2-4.** The
+user is the fact-checker here, not the audience. Ask specifically: is this
+accurate, and is anything missing that the reader will trip over.
+
+**Step 4 — publish the confirmed version as an Artifact.** That's the
+shareable, persistent surface — it survives the session, renders mermaid
+natively, and starts private until the user shares it. Load the
+`artifact-design` skill before writing the page, as its tool requires.
+
+Then give the user the URL and **say plainly that publishing put the content
+on claude.ai**. It starts private, but it has left the machine, and work
+code is the user's to disclose, not yours. If they'd rather not publish,
+hand them the mermaid fence and the prose — that pastes into Confluence, a
+README, or a PR description perfectly well.
+
+**Step 5 — stop.** No implementation, same as design mode.
+
+### The mermaid runtime rule is inverted between the two surfaces
+
+Get this backwards and the diagram silently fails to render:
+
+- **Companion server** — no mermaid is bundled, so your fragment **must**
+  import the CDN module (the recipe below).
+- **Artifact** — the platform detects a ```mermaid fence or a
+  `<pre class="mermaid">` block and injects its own bundled runtime. You
+  **must not** add a script tag or CDN import; the validator rejects a page
+  that already carries a runtime, and the CSP blocks the CDN anyway.
+
+So an artifact page is a plain ```mermaid fence and nothing else. Same
+mermaid source, one line different.
+
 ## Screen recipe
 
 Fragment only — no `<html>`, no CSS. The server wraps it.
@@ -284,3 +371,19 @@ doesn't come out as a white slab on a dark page.
   right. Everything downstream inherits the error.
 - **Sliding into implementation.** Hard stop at the confirmed design, in
   both directions — no code, and no "shall I build it now?" nudge.
+
+Explain mode adds four of its own:
+
+- **Diagramming a repo you didn't read.** A plausible architecture drawn
+  from the directory names is the worst thing this skill can produce: the
+  user skims it, it looks right, and it goes to people who cannot check it.
+  Read the code, trace one real path, name real files.
+- **Handing over a localhost URL.** It resolves to nothing on their
+  machine, and the server is dead by tomorrow anyway. The canvas is for
+  agreeing; the artifact is for sending.
+- **One diagram for every audience.** Pick an altitude and hold it. A
+  picture that tries to serve a stakeholder and a maintainer at once serves
+  neither.
+- **Publishing without saying so.** The artifact starts private, but the
+  content still left the machine. Say it in one sentence and let the user
+  decide — their employer's code is not yours to upload quietly.
