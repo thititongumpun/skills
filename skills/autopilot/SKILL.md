@@ -1,5 +1,6 @@
 ---
 name: autopilot
+argument-hint: "<task to run end to end>"
 description: Fully self-driven task execution — Opus/Fable plans the work into a task list, subagents execute each task (escalating to Opus/Fable when a task is judged complex), then Opus/Fable reviews everything for bugs/improvements and loops fixes back until clean. Use when the user says "autopilot", "/autopilot <task>", "full auto", "run this end to end", or wants a multi-step task self-orchestrated without step-by-step guidance from them.
 ---
 

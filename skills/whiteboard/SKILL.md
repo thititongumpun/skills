@@ -1,5 +1,6 @@
 ---
 name: whiteboard
+argument-hint: "<requirements> | explain <repo|PR|task>"
 description: Turn requirements or existing work into a diagram you can actually look at. Two modes — design mode draws a proposed flow in your browser, gets it confirmed, and compares solutions with pros/cons when more than one fits; explain mode reads work that already exists and publishes a shareable page so other people understand it. Never implements anything. Use when the user says "whiteboard this", "/whiteboard <requirements>", "draw this out", "diagram these requirements", "show me the flow", or "visualize this before we build it" — and for explain mode, "/whiteboard explain <repo/PR/task>", "explain what I'm working on", "document this for the team", "make a diagram to show other people", or "help them understand what I built". Needs Node, a browser, and the superpowers plugin for the live canvas; explain mode also needs the Artifact tool to publish.
 ---
 

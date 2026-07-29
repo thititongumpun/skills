@@ -1,5 +1,6 @@
 ---
 name: yolo
+argument-hint: "<task to run unattended>"
 description: You Only Live Once — unattended task execution meant to run while you're eating or sleeping. Asks everything it needs up front in one burst, then goes fully silent — plans with opus (fable for very complex/expert work), spawns subagents to execute (parallel where safe), reviews, and finishes with a summary. Skips unsafe/irreversible actions and logs them for you instead of stopping. Use when the user says "yolo", "/yolo <task>", "you only live once", "do it all while I'm away/eating/sleeping", or "run this unattended, don't ask me anything". Needs a subagent runtime — Claude Code only.
 ---
 

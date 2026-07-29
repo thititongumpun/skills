@@ -1,5 +1,6 @@
 ---
 name: skills-doctor
+argument-hint: "[--fix]"
 description: Check which skills in this repo actually work on this machine and what's missing — reports per-skill consequences (which skill is dead, which is degraded) with the exact install command for each gap. Use when a skill says it needs a tool that isn't there, when something degraded silently and you want to know why, after installing these skills for the first time, or when the user asks "what do I need to install", "why isn't <skill> working", or runs "/skills-doctor". Reports and prints commands; never installs anything on its own.
 ---
 
