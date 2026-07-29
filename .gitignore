@@ -1,0 +1,8 @@
+# Local install artifacts from `npx skills add` / plugin testing
+.agents/
+.claude/
+skills-lock.json
+
+# Scratch dirs the whiteboard skill's companion server writes
+.whiteboard/
+.superpowers/

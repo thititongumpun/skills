@@ -16,31 +16,31 @@ Work down this list. Stop at the first rung that returns content.
 ## 1. curl
 
 ```bash
-curl -sL -w '\n[%{http_code}]\n' URL -o /tmp/page.html
+scripts/fetch403.sh URL [OUTFILE.md]   # default outfile: /tmp/page.md
 ```
 
-If that 403s, retry once with a browser User-Agent — it fixes plain UA
-filtering:
+Curls the URL, retries once with a browser User-Agent if that 403s (fixes
+plain UA filtering), converts to markdown, and prints the headings. Transient
+failures and cookie-then-redirect flows are handled inside curl; the markdown
+step falls back to raw HTML when neither `html2text` nor `uvx` is installed.
+Exits non-zero if the page stays blocked or comes back as a bot-check
+interstitial.
 
-```bash
-curl -sL -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36' URL -o /tmp/page.html
-```
-
-Read it as markdown rather than raw HTML:
-
-```bash
-uvx --from html2text html2text --ignore-images --ignore-links /tmp/page.html > /tmp/page.md
-grep -n '^#\{1,3\} ' /tmp/page.md   # headings first, then read only the sections you need
-```
-
-A docs page is often 3-4k lines of markdown. Pull the sections you need with
-`sed -n 'START,ENDp'`; don't read the whole file into context.
+A docs page is often 3-4k lines of markdown. Read only the sections the
+headings point at with `sed -n 'START,ENDp'`; don't read the whole file into
+context.
 
 ## 2. The machine-readable endpoint
 
 Many sites publish something built for programmatic reads. Prefer it — it is
 smaller, stabler, and never fights you:
 
+- **context7 MCP, when the blocked page is a library/framework/CLI doc** — it
+  has the content already extracted, so a 403 on the rendered page is
+  irrelevant. `resolve-library-id` then `query-docs`, one concept per query,
+  three calls max. It ranks by documentation coverage rather than recency, so
+  read the `Versions:` list and pass `/org/project/version` when you need a
+  specific release rather than whatever ranked first.
 - `llms.txt` at the doc root (Confluent, Cloudflare, and a growing set)
 - `raw.githubusercontent.com` for anything in a repo; `gh api` for private ones
 - a JSON API, an RSS feed, or the `.md` source behind a rendered page
