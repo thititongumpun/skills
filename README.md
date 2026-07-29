@@ -46,7 +46,12 @@ claude mcp add excalidraw --scope user \
 Keep the `EXCALIDRAW_NO_AUTOSTART=1` — without it the canvas spawns whenever
 the agent connects, so port 3000 is listening at every session start whether
 or not you're drawing. With it, the skill starts the canvas only when you
-actually whiteboard something.
+actually whiteboard something, and stops it when done.
+
+Installed as a Claude Code plugin, a `SessionEnd` hook also stops the canvas
+if a session ends before the skill got to shut it down. It costs ~6ms when
+nothing is running. Via `npx skills add` there's no hook, so a killed session
+can leave the canvas up — `npx -y mcp-excalidraw-server stop` clears it.
 
 Without it the skill still works, it just can't draw: it degrades to a
 mermaid fence in the terminal and says so. Needs `node` on `PATH` and a

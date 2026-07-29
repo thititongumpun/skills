@@ -220,6 +220,14 @@ If you find :3000 already listening at the start of a session nobody asked
 for, the registration is missing the env var. Fix the registration rather
 than just stopping the process.
 
+A `SessionEnd` hook stops the canvas as a backstop, because Phase 6 doesn't
+always get reached — sessions get interrupted, run out of context, or are
+killed. The canvas is spawned detached with no idle timeout and no owner
+watchdog, so without that hook an abandoned session leaves it listening
+indefinitely. **The hook is a net, not the plan**: still stop it explicitly
+in Phase 6, and note it only exists for plugin installs — `npx skills add`
+users have no hook, so for them Phase 6 is the only cleanup there is.
+
 Never bind it to `0.0.0.0` to share a diagram. Explain mode's artifact is
 the sharing mechanism.
 

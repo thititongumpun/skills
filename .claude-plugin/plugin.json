@@ -18,5 +18,6 @@
     "./skills/whiteboard",
     "./skills/yolo"
   ],
-  "commands": ["./commands/skills-doctor.md"]
+  "commands": ["./commands/skills-doctor.md"],
+  "hooks": "./hooks/hooks.json"
 }
