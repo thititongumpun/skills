@@ -67,7 +67,15 @@ For a visual check: `officecli view deck.pptx screenshot -o out.png` (or
 
 ## Notes
 
+- Unsure whether a Mermaid construct exists or how it's spelled? Query
+  context7 (`/mermaid-js/mermaid`) rather than guessing — it carries versioned
+  syntax docs, and a mermaid parse error surfaces as a failed `add` with no
+  slide. Check its `Versions:` list against the mermaid your renderer bundles;
+  newer syntax silently fails on an older parser.
 - For a whole *deck* (multiple slides, layout, theming) rather than a
   diagram, load officecli's own deck skill first: `officecli load_skill pptx`.
-- Mermaid renders natively in Claude Code and GitHub already — only reach
-  for this skill when the target really is PowerPoint.
+- Mermaid already renders in GitHub, on claude.ai, and in a published
+  Artifact — but **not** in the Claude Code terminal, which has no graphics
+  protocol and prints the fence as literal text. Only reach for this skill
+  when the target really is PowerPoint; reach for `whiteboard` when you
+  just need to *see* a diagram to agree on it.
