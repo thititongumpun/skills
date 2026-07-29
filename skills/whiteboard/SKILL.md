@@ -185,15 +185,45 @@ Add an "explain more" option only when a real question is still open.
 
 **The canvas is in memory and dies with the server. Export before you stop
 it or the user's edits are gone.** `export_scene` to
-`.whiteboard/<name>.excalidraw` — that file is the only durable record, and
-it reopens with their arrangement intact.
+`.whiteboard/<name>.excalidraw` first, unconditionally and without asking —
+it's the only reopenable record of their arrangement, it costs nothing, and
+it needs no browser tab. Losing an hour of layout because someone answered
+"no thanks" to a prompt is not a tradeoff worth offering.
+
+**Then ask what else they want out of it**, because that depends entirely on
+where the diagram is going and you can't infer it. One `AskUserQuestion`,
+multi-select, offering:
+
+- **PNG** — for pasting into Slack, a ticket, or a doc. Cropped to content.
+- **SVG** — for a README, a wiki, or anything that should stay crisp.
+- **A shareable excalidraw.com link** — see the warning below.
+- **Nothing more** — the `.excalidraw` file is enough.
+
+Ask once, here, not per format. Both image exports go through
+`export_to_image` **with a `filePath`**, written next to the scene file.
+
+Two things that will bite:
+
+- **PNG and SVG need the browser tab still open.** By Phase 6 the user has
+  often closed it. Ask them to reopen `http://127.0.0.1:3000` before
+  exporting, or the call fails with exit code 4. Don't stop the server and
+  then discover you needed it.
+- **`format: "png"` without a `filePath` returns a placeholder string**, not
+  an image — the literal text `Base64 png data (N chars). Use filePath to
+  save to disk.` Always pass a path for PNG.
+
+The excalidraw.com link (`export_to_excalidraw_url`) **uploads the diagram to
+a third party**. It's encrypted with a key that stays in the URL fragment, so
+their server can't read it, but anyone with the link can. Say that in one
+sentence before doing it and let them decide — the same rule as publishing an
+artifact. Never offer it as the default.
 
 Then stop the server (`mcp-excalidraw-server stop`). This is deliberate, not
 tidiness — see the security note below. Don't leave an unauthenticated
 listener running for days because a session ended untidily.
 
 Then in the terminal: the confirmed design in prose, the mermaid fence, the
-path to the exported scene, the decisions made and why, and every open
+path to every file you wrote, the decisions made and why, and every open
 question you did not resolve. If their edits changed the design rather than
 just the layout, the mermaid you emit should reflect the *edited* version —
 regenerate it from what's on the canvas, don't paste back what you wrote in
@@ -312,8 +342,12 @@ describe_scene            confirm it landed, and what the element ids are
   -> hand over, end turn, let them edit
 describe_scene            after ~1.5s, read their changes
 update_element            fix single nodes by id, never a full redraw
-export_to_image           format "svg", no filePath, for an artifact
-export_scene              .whiteboard/<name>.excalidraw, before stopping
+export_to_image           format "svg", no filePath, inline for an artifact
+export_scene              .whiteboard/<name>.excalidraw — always, first
+  -> ask what else they want
+export_to_image           format png|svg WITH filePath, next to the scene
+export_to_excalidraw_url  only if asked; uploads to a third party
+  -> then stop the server
 ```
 
 Node ids come from the mermaid source: `API[Refund API]` becomes element
@@ -339,6 +373,11 @@ If a call fails with exit code 4, no browser tab is open. Ask them to open
   canvas saying so. Ask, don't retry.
 - **Forgetting to export before stopping.** The scene is in memory. Stop the
   server without `export_scene` and their rearrangement is simply gone.
+- **Stopping the canvas before the image exports.** PNG and SVG render in
+  the browser tab. Ask what they want, export it, *then* shut down — in that
+  order, or you're restarting the server to fix your own mistake.
+- **Asking whether to save the `.excalidraw`.** Always write it. The prompt
+  is about what *else* they want, never about whether to keep their work.
 - **Reporting an edit you didn't verify.** If `describe_scene` shows the
   same layout you drew, say nothing moved. Inventing "I see you moved X" is
   worse than the read-only canvas this replaced.
