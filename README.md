@@ -18,6 +18,20 @@ Or install as a native Claude Code plugin (updates when this repo changes):
 /plugin install skills@thititongumpun
 ```
 
+### Check your setup
+
+Which skills actually work on this machine, and what's missing:
+
+```bash
+bash .agents/skills/skills-doctor/scripts/doctor.sh
+```
+
+Or in Claude Code: `/skills-doctor` — the same check plus the harness tools
+(subagents, `AskUserQuestion`, `Artifact`) that a shell can't see. It reports
+per skill, so you get "pptx-diagram is dead" rather than "officecli missing",
+and prints the exact install command for each gap. `--fix` offers to run the
+safe ones. It never installs anything on its own.
+
 ### Needed for whiteboard's canvas: superpowers
 
 `whiteboard` draws in the browser by driving the visual companion server
@@ -87,6 +101,10 @@ anywhere — you just get the mermaid fence instead of the picture.
 - **fetch-403** — recover a page the fetcher was refused, without quietly
   falling back to memory.
 - **pptx-diagram** — Mermaid → editable PowerPoint shapes via
-  [officecli](https://officecli.ai).
+  [officecli](https://officecli.ai). Install it first —
+  `npm install -g @officecli/officecli`, or `brew install officecli` — this
+  skill does nothing at all without it.
+- **skills-doctor** — what's missing on this machine and which skill each gap
+  kills. Reports and prints commands; never installs on its own.
 
 When to reach for each, in the form agents read: [AGENTS.md](AGENTS.md).

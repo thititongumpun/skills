@@ -18,4 +18,6 @@ when working inside this repo.
 | `yolo` | Running a multi-step task unattended (eating/sleeping) — asks everything up front, then plans/executes via subagents fully silent, skips unsafe actions and logs them. Claude Code only, like autopilot. |
 | `whiteboard` | Two modes. *Design*: turning raw requirements into a diagram before any code — draws the flow in the browser, gets it confirmed, compares solutions with pros/cons when there's a real fork. *Explain*: diagramming work that already exists and publishing a shareable page so other people understand it. Never implements. Needs Node, a browser, and the superpowers plugin; degrades to a terminal mermaid fence without them. |
 
+| `skills-doctor` | A skill here needs a tool that isn't installed, something degraded silently, or you want to know what to install after a fresh clone. Run `scripts/doctor.sh`. |
+
 New skill added to this repo? Add a row here too.

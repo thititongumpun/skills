@@ -14,7 +14,9 @@
     "./skills/confluent-kafka-developer",
     "./skills/fetch-403",
     "./skills/pptx-diagram",
+    "./skills/skills-doctor",
     "./skills/whiteboard",
     "./skills/yolo"
-  ]
+  ],
+  "commands": ["./commands/skills-doctor.md"]
 }
