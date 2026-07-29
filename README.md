@@ -39,8 +39,14 @@ you can edit by hand — drag a box, reroute an arrow — and then reads your
 edits back:
 
 ```
-claude mcp add excalidraw --scope user -- npx -y mcp-excalidraw-server
+claude mcp add excalidraw --scope user \
+  -e EXCALIDRAW_NO_AUTOSTART=1 -- npx -y mcp-excalidraw-server
 ```
+
+Keep the `EXCALIDRAW_NO_AUTOSTART=1` — without it the canvas spawns whenever
+the agent connects, so port 3000 is listening at every session start whether
+or not you're drawing. With it, the skill starts the canvas only when you
+actually whiteboard something.
 
 Without it the skill still works, it just can't draw: it degrades to a
 mermaid fence in the terminal and says so. Needs `node` on `PATH` and a

@@ -56,7 +56,7 @@ fix_for() {
                            *) echo "sudo apt install gh" ;; esac ;;
     browser)   case $OS in wsl) echo "sudo apt install wslu" ;;
                            *) echo "install a desktop browser, or open the URL manually" ;; esac ;;
-    excalidraw)  echo "claude mcp add excalidraw --scope user -- npx -y mcp-excalidraw-server" ;;
+    excalidraw)  echo "claude mcp add excalidraw --scope user -e EXCALIDRAW_NO_AUTOSTART=1 -- npx -y mcp-excalidraw-server" ;;
     superpowers) echo "/plugin install superpowers@claude-plugins-official" ;;
     context7)    echo "/plugin install context7@claude-plugins-official" ;;
     confluent) echo "https://docs.confluent.io/confluent-cli/current/install.html" ;;

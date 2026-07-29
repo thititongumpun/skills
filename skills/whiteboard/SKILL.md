@@ -96,11 +96,25 @@ it isn't, print this and carry on with a mermaid fence in the terminal,
 saying plainly that there's no adjustable canvas this run:
 
 ```bash
-claude mcp add excalidraw --scope user -- npx -y mcp-excalidraw-server
+claude mcp add excalidraw --scope user \
+  -e EXCALIDRAW_NO_AUTOSTART=1 -- npx -y mcp-excalidraw-server
 ```
 
-Then start it — `mcp-excalidraw-server start`, or just make any canvas call
-and it auto-spawns. It listens on `http://127.0.0.1:3000`.
+**`EXCALIDRAW_NO_AUTOSTART=1` is not optional.** Without it, the MCP server
+spawns the canvas the moment the agent connects — meaning an unauthenticated
+listener on port 3000 at *every* session start, whether or not anyone is
+drawing. That silently defeats the whole start-on-use lifecycle below.
+Verified: registering without it left :3000 serving 200 immediately.
+
+Start the canvas explicitly instead, which overrides the guard:
+
+```bash
+npx -y mcp-excalidraw-server start
+```
+
+It listens on `http://127.0.0.1:3000`. With the guard set, canvas tools fail
+with exit code 3 (`auto-start disabled`) until you run that — that's the
+design working, not an error to route around.
 
 **Nothing opens the browser for them.** Say the URL out loud, every time.
 Until a tab is open there is no frontend, and `create_from_mermaid`,
@@ -195,9 +209,16 @@ The MCP's canvas server binds `127.0.0.1` but ships **no auth and wildcard
 CORS** (upstream #39, and PR #74 which would fix it is unmerged as of 1.1.0).
 While it runs, any page the user visits can read or wipe the canvas.
 
-That is why Phase 6 stops it. Start on use, export, shut down — exposure
-lasts the minutes they're drawing, not until the next reboot. If the user
-asks to leave it up, that's their call, but say the tradeoff once.
+That is why Phase 6 stops it, and why the registration carries
+`EXCALIDRAW_NO_AUTOSTART=1`. Both halves are needed: the env var stops it
+coming up at every session launch, and the explicit stop keeps it from
+outliving the drawing. Start on use, export, shut down — exposure lasts the
+minutes they're drawing, not until the next reboot. If the user asks to
+leave it up, that's their call, but say the tradeoff once.
+
+If you find :3000 already listening at the start of a session nobody asked
+for, the registration is missing the env var. Fix the registration rather
+than just stopping the process.
 
 Never bind it to `0.0.0.0` to share a diagram. Explain mode's artifact is
 the sharing mechanism.
