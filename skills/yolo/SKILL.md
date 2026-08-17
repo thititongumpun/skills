@@ -44,12 +44,13 @@ name that doesn't exist, and it fails hours into the run.
 
 Planner/reviewer default `model: "opus"`. Escalate the *planner* to
 `model: "fable"` when the task is very complex or needs expert / professional
-judgment (opus itself may recommend this in Phase 1). Execution subagents
-inherit the session default; escalate a task's executor to the planner's model
+judgment (opus itself may recommend this in Phase 1). Execution subagents run
+on `model: "sonnet"`; escalate a task's executor to the planner's model
 only when Phase 1 flagged that task `complex: true`, and drop it to
 `model: "haiku"` only when Phase 1 flagged that task `simple: true` (autopilot
-Phase 1 defines the bar). Unattended means a mis-tiered task costs a silent
-retry — leave both flags off when unsure.
+Phase 1 defines the bar). Never leave `model` unset — unattended, an inherited
+session default silently retiers the whole run and nobody is awake to notice.
+A mis-tiered task costs a silent retry, so leave both flags off when unsure.
 
 ## Override 3 — Safety: skip & log, never touch, never wait
 

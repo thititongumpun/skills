@@ -46,10 +46,10 @@ asked.
   ```
 
   **Every row names the model that runs it** — no blanks, no "inherits the
-  default." Resolve the session default to its actual name and print that,
-  so the user can see the whole tiering at a glance instead of reverse-
-  engineering it from which rows are annotated. Keep the tier flag in
-  parentheses after the model where one applies.
+  default." Every task has an explicit model (Phase 2), so print it: the
+  user sees the whole tiering at a glance instead of reverse-engineering it
+  from which rows are annotated. Keep the tier flag in parentheses after
+  the model where one applies.
 
   Same rule for the phases the user doesn't see as tasks: the Phase 1 plan
   line and Phase 4 fix agents carry their model too (`[opus] planning`,
@@ -130,12 +130,16 @@ For each planned task, deploy one Agent call:
 - Subagents don't spawn subagents. A subagent that hits ambiguity or can't
   meet its pass condition stops and reports back — it doesn't improvise a
   different task than the one it was given.
-- `model`: omit for normal tasks (inherits session default). Set
-  `model: "opus"` (or `"fable"`, matching Phase 1) only for tasks flagged
-  `complex: true`, and `model: "haiku"` only for tasks flagged
-  `simple: true`.
+- `model`: set `model: "sonnet"` for normal tasks — the middle tier is
+  explicit, not inherited. Set `model: "opus"` (or `"fable"`, matching
+  Phase 1) only for tasks flagged `complex: true`, and `model: "haiku"`
+  only for tasks flagged `simple: true`. Never omit `model`: inheriting the
+  session default means the same plan runs a different tiering depending on
+  what the user happens to be chatting on, and on an Opus session it
+  quietly puts every unmarked task on Opus — the `complex` flag then buys
+  nothing and the whole run is Opus-priced.
 - If a `haiku` agent misses its pass condition or reports back confused
-  about the task, redispatch that one task once with `model` omitted before
+  about the task, redispatch that one task once on `model: "sonnet"` before
   treating it as failed — a mis-tiered task is cheap to retry and shouldn't
   block its dependents. Two misses on the same task is a plan problem, not
   a model problem: report it.
