@@ -65,17 +65,42 @@ Unattended means no confirmer is present, so defer instead of confirm.
 
 ## Override 4 — Always finish with a summary
 
-The user returns to a finished run, so end with a single report:
+Use autopilot's Phase 5 exactly — same three headings, same plain language,
+same rules — with one heading added, and the unsafe list folded into the
+last one:
 
-- **Done** — tasks completed, fix rounds used, whether the final review came
-  back clean, and any `simple`-flagged task that missed on haiku and had to be
-  redispatched (the user slept through it; a repeat offender means the plan's
-  `simple` bar is set too loose).
-- **Assumptions made** — every ambiguity you resolved yourself (Override 1).
-- **Deferred (unsafe) — do this when you're back** — the Override 3 list, each
-  with the command and why.
-- **Blocked** — any task that failed and blocked its dependents (report it;
-  don't force past it).
+```
+## What I did
+- ...
+
+## What broke and got fixed
+- ...
+
+## What I assumed
+- The staging cluster is the target. You said "staging" but not which one.
+- Nothing else. Everything came from your answers up front.
+
+## What you need to do next
+- You: I did not push the branch. `git push --force` would rewrite history,
+  and nobody was here to confirm it.
+- You: rotate the old API key. That's a live credential change.
+
+8 tasks, 1 fix round, review clean.
+```
+
+- **What I assumed** is the extra heading: every ambiguity you resolved
+  yourself under Override 1. The user was asleep for those calls, so each one
+  is a thing they may want to reverse. Nothing assumed → say so.
+- The Override 3 deferred list lives under **What you need to do next**, one
+  line each with the exact command you would have run and why you skipped it.
+  It's a user action, not a separate section.
+- The counts line also names any `simple`-flagged task that missed on haiku
+  and had to be redispatched (`8 tasks, 1 retry, 1 fix round, review clean`).
+  The user slept through it; a repeat offender means the plan's `simple` bar
+  is set too loose.
+- Blocked tasks follow autopilot's rule — `Still broken:` under **What broke
+  and got fixed**, with what was tried. Don't force past a blocker to keep
+  the loop moving.
 
 ## Don't stall
 

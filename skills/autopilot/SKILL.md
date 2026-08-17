@@ -59,8 +59,7 @@ asked.
   Reprint on each state change, not on every tool call — one refreshed
   checklist per batch of task completions is enough.
 - In the fix loop, state the round: `[Review round 1/2] 3 findings, fixing`.
-- On finish, report what ran: tasks completed, fix rounds used, and whether
-  the final review came back clean.
+- On finish, hand back with the Phase 5 summary.
 
 **Report counts and phase, never time estimates.** Subagent duration isn't
 knowable in advance — "about 5 minutes left" would be invented. "4 of 7
@@ -179,6 +178,47 @@ If Phase 3 found issues:
    that it needs one more patch. Stop and report the remaining
    findings (with what was tried) to the user instead of looping forever.
 
+## Phase 5: Hand back
+
+The user did not watch the run, so this last message is the whole story for
+them. Write it in plain language: short sentences, no jargon, no phase
+numbers, no model names, no tool names. Someone who never read the plan
+should be able to act on it. Three headings, in this order, always all
+three:
+
+```
+## What I did
+- Producers now send Avro instead of JSON. The schemas live in `schemas/`.
+- Bad messages go to a dead-letter topic. Before, one bad message stopped
+  the consumer.
+
+## What broke and got fixed
+- The consumer crashed on messages written before the change. Cause: it read
+  them with the new schema. Fixed by pinning the reader schema to v1.
+- Still broken: the retry test fails about 1 run in 10. I could not find why
+  in 2 tries.
+
+## What you need to do next
+- You: add the schemas to the staging Schema Registry. I have no login for it.
+- You: merge and deploy. I did not push anything.
+
+8 tasks, 1 fix round, review clean.
+```
+
+- **Say who does each next action and why it needs a person** — a login you
+  don't have, a third-party dashboard, a decision that is the user's to make.
+  "Next action" with no owner gets read as already done.
+- **Never drop a heading.** Nothing broke → write "Nothing broke." Nothing
+  left → write "Nothing. It's done." A missing heading reads as unchecked.
+- Anything still broken at the fix-loop cap, and any task that failed and
+  blocked others, goes under "What broke and got fixed" as `Still broken:`
+  with what was tried. Do not quietly leave it out, and do not promote it to
+  "next action" unless the user is the one who has to act.
+- Mirror the next-action list into `TodoWrite` when it's available, so the
+  items survive the message.
+- Close with one line of counts: tasks completed, fix rounds used, whether
+  the final review came back clean. One line, not a fourth section.
+
 ## Failure modes to avoid
 
 - **The one that actually happens: you do the work yourself.** Being told
@@ -195,3 +235,6 @@ If Phase 3 found issues:
   the cost of leaving `simple` off is a few tokens. Unmarked is the default.
 - A failed or empty-handed task agent blocks its dependents — report them
   as blocked, don't dispatch them anyway just to keep the loop moving.
+- Don't hand back a technical dump. The Phase 5 summary is for the person
+  who walked away, not a replay of the run — no phase numbers, no model
+  names, no subagent reports pasted through.
