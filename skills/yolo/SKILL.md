@@ -103,6 +103,15 @@ last one:
   and got fixed**, with what was tried. Don't force past a blocker to keep
   the loop moving.
 
+## Override 5 — The task file is the trail
+
+autopilot's task file (`.claude/autopilot-tasks.md`) is not optional here: the
+user is asleep and it's the only progress they can check mid-run and the only
+record if the session dies. Write it at the end of Phase 1 and keep it current
+through every state change, and append the Override 4 summary — Done,
+Assumptions, Deferred (unsafe), Blocked — to it when the run ends, so the file
+matches the report they wake up to.
+
 ## Don't stall
 
 Unattended means no waiting on human input and no infinite loops. Respect the

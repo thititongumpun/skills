@@ -65,6 +65,22 @@ page, which needs the Artifact tool.
 it runs, any page you visit can read or wipe your canvas. The skill therefore
 starts it on use and stops it when done — don't leave it running.
 
+### Needed for explain-repo: codegraph
+
+`explain-repo` explains an unfamiliar repo by tracing real call paths, which it
+gets from a [CodeGraph](https://www.npmjs.com/package/@colbymchenry/codegraph)
+index rather than from grep:
+
+```bash
+npm install -g @colbymchenry/codegraph
+codegraph init -i        # once per repo you want explained
+```
+
+The skill checks for `.codegraph/` and offers to run `init` itself when the
+target repo has none. Without codegraph at all it still works — it falls back
+to reading entrypoints and config, and says in the report that the map is
+shallower.
+
 ### Optional: context7
 
 Several skills query [context7](https://context7.com) for exact library API
@@ -123,6 +139,15 @@ picture.
   [officecli](https://officecli.ai). Install it first —
   `npm install -g @officecli/officecli`, or `brew install officecli` — this
   skill does nothing at all without it.
+- **explain-repo** — "what does this repo even do?" Reads a codebase you didn't
+  write and hands back a plain-language summary, one diagram, every external
+  service it talks to that isn't in the tree, and an explicit list of what it
+  couldn't work out — rather than a confident guess. Read-only. Wants
+  codegraph (see above) and draws its diagram with **architecture-diagram**.
+- **architecture-diagram** — a system/cloud/network diagram as one dark-themed,
+  self-contained HTML+SVG file with copy, PNG, and PDF buttons. Third-party,
+  MIT, from [Cocoon AI](https://github.com/Cocoon-AI/architecture-diagram-generator);
+  `explain-repo` uses it to draw its picture.
 - **skills-doctor** — what's missing on this machine and which skill each gap
   kills. Reports and prints commands; never installs on its own.
 

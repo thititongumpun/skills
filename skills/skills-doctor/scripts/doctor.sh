@@ -13,7 +13,9 @@ case "$(uname -s)" in
 esac
 
 # name|hard|skills it affects|what breaks without it
-DEPS=$(cat <<'EOF'
+# ponytail: read -d '' not DEPS=$(cat <<EOF) — bash 3.2 mis-parses apostrophes
+# inside a heredoc nested in $( ). Returns 1 at EOF, hence the || true.
+IFS= read -r -d '' DEPS <<'EOF' || true
 node|hard|whiteboard|canvas server won't start
 curl|hard|fetch-403|rung 1 can't run at all
 officecli|hard|pptx-diagram|entire skill is dead, zero fallback
@@ -25,9 +27,10 @@ superpowers|soft|autopilot|its planner/reviewer can't invoke brainstorming or sy
 context7|soft|kafka admin+developer, autopilot, yolo, fetch-403, pptx-diagram|version-pinned library docs; falls back to fetching pages
 confluent|soft|confluent-kafka-admin, confluent-kafka-developer|emitted CLI commands go unverified
 terraform|soft|confluent-kafka-admin|can't fmt/validate the TF it writes
+architecture-diagram|soft|explain-repo|no HTML/SVG picture; the report degrades to a mermaid fence
+codegraph|soft|explain-repo|no symbol graph; falls back to reading entrypoints, shallower map
 rtk|soft|autopilot, yolo|shell calls aren't token-optimized
 EOF
-)
 
 have() {
   case "$1" in
@@ -39,6 +42,9 @@ have() {
     # present. Fine for an advisory row; upgrade to a real parse if it misleads.
     excalidraw)  grep -qs 'mcp-excalidraw-server' "$HOME/.claude.json" .mcp.json 2>/dev/null ;;
     superpowers) grep -qs '"superpowers@' "$PLUGINS" ;;
+    architecture-diagram) [ -f "$HOME/.claude/skills/architecture-diagram/SKILL.md" ] ;;
+    codegraph)   command -v codegraph >/dev/null 2>&1 ||
+                 grep -qs 'codegraph' "$HOME/.claude.json" .mcp.json 2>/dev/null ;;
     context7)    grep -qs 'context7' "$PLUGINS" "$HOME/.claude.json" .mcp.json 2>/dev/null ;;
     *)           command -v "$1" >/dev/null 2>&1 ;;
   esac
@@ -58,7 +64,9 @@ fix_for() {
                            *) echo "install a desktop browser, or open the URL manually" ;; esac ;;
     excalidraw)  echo "claude mcp add excalidraw --scope user -e EXCALIDRAW_NO_AUTOSTART=1 -- npx -y mcp-excalidraw-server" ;;
     superpowers) echo "/plugin install superpowers@claude-plugins-official" ;;
+    architecture-diagram) echo "ships with this plugin — reinstall it, or re-link skills/architecture-diagram" ;;
     context7)    echo "/plugin install context7@claude-plugins-official" ;;
+    codegraph)   echo "npm install -g @colbymchenry/codegraph  (then: codegraph init -i in the repo)" ;;
     confluent) echo "https://docs.confluent.io/confluent-cli/current/install.html" ;;
     terraform) echo "https://developer.hashicorp.com/terraform/install" ;;
     rtk)       echo "optional; skip unless you already use rtk" ;;
@@ -154,9 +162,11 @@ if [ $FIX -eq 1 ]; then
 fi
 
 n_dead=${#dead[@]} n_deg=${#degraded[@]}
+# bash 3.2 mis-parses a single-quoted string inside $() inside "" — hoist it out
+hint=""; [ $FIX -eq 0 ] && hint="  --fix to install what is safe."
 if [ "$n_dead" -gt 0 ]; then
-  echo "$n_dead dead, $n_deg degraded.$([ $FIX -eq 0 ] && echo '  --fix to install what is safe.')"
+  echo "$n_dead dead, $n_deg degraded.$hint"
   exit 1
 fi
-echo "Nothing dead, $n_deg degraded.$([ $n_deg -gt 0 ] && [ $FIX -eq 0 ] && echo '  --fix to install what is safe.')"
+echo "Nothing dead, $n_deg degraded.$([ $n_deg -gt 0 ] && echo "$hint")"
 exit 0

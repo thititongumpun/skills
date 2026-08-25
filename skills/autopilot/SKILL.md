@@ -61,6 +61,37 @@ asked.
 - In the fix loop, state the round: `[Review round 1/2] 3 findings, fixing`.
 - On finish, hand back with the Phase 5 summary.
 
+### Task file
+
+The in-chat checklist scrolls away and `TodoWrite` dies with the session, so
+the task list also lives on disk at `.claude/autopilot-tasks.md`.
+
+- Write it at the end of Phase 1, before dispatching anything: the same
+  numbered list, one `- [ ]` per task, with the model and any tier flag.
+- Update the file on each state change — the same moments you'd reprint the
+  checklist. Mark `- [x]` when a task's pass condition passed, and put the
+  currently running one(s) under a `**Executing:**` line at the top with the
+  phase and counts.
+- Append the review rounds and the final outcome, so the finished file is
+  the run's record.
+
+```markdown
+# Autopilot: add DLQ handling to the order consumer
+**Executing:** 4. Add DLQ handling [opus] — phase 2, 3/8 done
+
+- [x] 1. Define Avro schema + compatibility mode   [sonnet]
+- [x] 2. Add idempotent producer config            [sonnet]
+- [x] 3. Wire Schema Registry client               [sonnet]
+- [ ] 4. Add DLQ handling                          [opus]   (complex)
+- [ ] 5. Streams topology tests                    [sonnet]
+- [ ] 6. Bump connector version                    [haiku]  (simple)
+- [ ] 7. Update docs                               [haiku]  (simple)
+- [ ] 8. Review                                    [opus]
+```
+
+Rewrite the file yourself — don't delegate it to a subagent, and don't let a
+task agent edit it.
+
 **Report counts and phase, never time estimates.** Subagent duration isn't
 knowable in advance — "about 5 minutes left" would be invented. "4 of 7
 tasks done, review pending" is true and just as useful.

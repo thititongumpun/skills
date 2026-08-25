@@ -9,9 +9,11 @@
   "license": "MIT",
   "keywords": ["engineering", "skills", "orchestration", "kafka", "confluent"],
   "skills": [
+    "./skills/architecture-diagram",
     "./skills/autopilot",
     "./skills/confluent-kafka-admin",
     "./skills/confluent-kafka-developer",
+    "./skills/explain-repo",
     "./skills/fetch-403",
     "./skills/pptx-diagram",
     "./skills/skills-doctor",
