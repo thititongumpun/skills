@@ -96,6 +96,34 @@ task agent edit it.
 knowable in advance — "about 5 minutes left" would be invented. "4 of 7
 tasks done, review pending" is true and just as useful.
 
+## Build lazy
+
+Every executor, review, and fix-agent brief carries these rules verbatim —
+Phase 2, Phase 3, and Phase 4 say so explicitly, because subagents don't
+inherit them from this file.
+
+- Before writing anything, climb down a ladder and stop at the first rung
+  that holds: does this need to exist at all (speculative work gets
+  skipped, with a line saying so, not built "just in case"); the standard
+  library; a native platform feature; a dependency already installed; one
+  line; only then the minimum code that actually works.
+- No unrequested abstractions: no interface for one implementation, no
+  factory for one product, no config knob for a value that never changes.
+  No scaffolding "for later" — later doesn't get to spend now's budget.
+- Never reach for a new dependency to do what a few lines already can.
+- Shortest working diff wins. Fewest files touched. Boring beats clever.
+- Mark every deliberate simplification with a `ponytail:` comment naming
+  the ceiling and the upgrade path, e.g. `# ponytail: global lock,
+  per-account locks if throughput matters`.
+- **Never simplify away** input validation at trust boundaries, error
+  handling that prevents data loss, security, accessibility basics, or
+  anything the user explicitly asked for. Say this plainly: lazy means the
+  smallest correct thing, not careless.
+- Non-trivial logic leaves one runnable check behind — the smallest thing
+  that fails if the logic breaks. No frameworks, no fixtures. This is
+  usually the task's own pass condition already, so it costs nothing
+  extra.
+
 ## Phase 0: Clarify
 
 Before deploying the Phase 1 Plan agent, check whether the request has
@@ -158,6 +186,8 @@ For each planned task, deploy one Agent call:
 - One clear objective per subagent, with its pass condition quoted
   verbatim; require it to report exactly what it changed and the result of
   running that check.
+- Every brief includes the `## Build lazy` rules verbatim — subagents
+  don't inherit them from this file.
 - Subagents don't spawn subagents. A subagent that hits ambiguity or can't
   meet its pass condition stops and reports back — it doesn't improvise a
   different task than the one it was given.
@@ -183,8 +213,9 @@ For each planned task, deploy one Agent call:
 ## Phase 3: Review
 
 Deploy one Agent call on the Phase 1 model, given the user's original
-request, the full task list, and every execution report. It must check the
-result against that original request, not just against the plan — a
+request, the full task list, every execution report, and the `## Build
+lazy` rules verbatim. It must check the result against that original
+request, not just against the plan — a
 perfectly executed wrong plan is still wrong. It must read the actual
 changed files itself — not just trust the reports — and run the project's
 own check (tests / typecheck / build, whatever the repo uses), including
@@ -196,16 +227,21 @@ before reporting it: confirm the fault with a direct check — grep, diff,
 run it — and trace it to its root cause. A finding names the root cause
 and where to fix it, not "X looks off." Not finding evidence that
 something works is not evidence it's broken; an unverified finding sends a
-fix agent chasing a ghost and costs a whole round. Return either concrete
-findings (root cause + fix location, plus any general improvements) or
-confirmation everything's clean.
+fix agent chasing a ghost and costs a whole round. A task that shipped an
+unrequested abstraction, a config knob nobody asked for, or a helper layer
+with one caller is a finding, exactly like a bug — judge it against the
+`## Build lazy` rules. Return either concrete findings (root cause + fix
+location, plus any general improvements) or confirmation everything's
+clean.
 
 ## Phase 4: Fix loop
 
 If Phase 3 found issues:
 1. Deploy one Agent call per finding to fix it (parallel where findings are
    independent). Each fix agent addresses the root cause Phase 3 identified
-   — one focused change, not a scattershot of unrelated tweaks.
+   — one focused change, not a scattershot of unrelated tweaks. Each fix
+   brief also includes the `## Build lazy` rules verbatim — a fix is where
+   scope creep usually enters.
 2. Re-deploy the Phase 3 review agent.
 3. Repeat from step 1 up to the round cap. If the same finding is still not
    resolved at the cap, treat that as a systematic-debugging signal —
@@ -216,30 +252,33 @@ If Phase 3 found issues:
 ## Phase 5: Hand back
 
 The user did not watch the run, so this last message is the whole story for
-them. Write it in plain language: short sentences, no jargon, no phase
-numbers, no model names, no tool names. Someone who never read the plan
+them. Write it ponytail-terse: plain language, one line per item, no
+paragraphs, no jargon, no phase numbers, no model names, no tool names. If
+an explanation of a change would run longer than the change itself, cut
+the explanation — no design-notes essays. Someone who never read the plan
 should be able to act on it. Three headings, in this order, always all
 three:
 
 ```
 ## What I did
-- Producers now send Avro instead of JSON. The schemas live in `schemas/`.
-- Bad messages go to a dead-letter topic. Before, one bad message stopped
-  the consumer.
+- Producers send Avro, not JSON. Schemas live in `schemas/`.
+- Bad messages go to a dead-letter topic instead of stopping the consumer.
 
 ## What broke and got fixed
-- The consumer crashed on messages written before the change. Cause: it read
-  them with the new schema. Fixed by pinning the reader schema to v1.
-- Still broken: the retry test fails about 1 run in 10. I could not find why
-  in 2 tries.
+- Consumer crashed on old messages (read with the new schema). Fixed:
+  pinned the reader schema to v1.
+- Still broken: retry test flakes about 1 run in 10. Cause not found in
+  2 tries.
 
 ## What you need to do next
-- You: add the schemas to the staging Schema Registry. I have no login for it.
-- You: merge and deploy. I did not push anything.
+- You: add the schemas to the staging Schema Registry — I have no login.
+- You: merge and deploy — I did not push anything.
 
 8 tasks, 1 fix round, review clean.
 ```
 
+- **One line per item, no paragraphs.** If it doesn't fit a line, it's
+  too much explanation.
 - **Say who does each next action and why it needs a person** — a login you
   don't have, a third-party dashboard, a decision that is the user's to make.
   "Next action" with no owner gets read as already done.
@@ -270,6 +309,9 @@ three:
   the cost of leaving `simple` off is a few tokens. Unmarked is the default.
 - A failed or empty-handed task agent blocks its dependents — report them
   as blocked, don't dispatch them anyway just to keep the loop moving.
+- Don't let a subagent gold-plate. An executor that adds an interface, a
+  config knob, or a helper layer nobody asked for has handed you extra
+  work to review and the user extra code to maintain.
 - Don't hand back a technical dump. The Phase 5 summary is for the person
   who walked away, not a replay of the run — no phase numbers, no model
   names, no subagent reports pasted through.

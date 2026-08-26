@@ -11,7 +11,7 @@ eating, sleeping, away. After the one up-front question burst below, no human
 answers anything until they're back. Do not do the work yourself; deploy
 subagents and coordinate.
 
-This skill IS the `autopilot` flow with four overrides. Follow `autopilot`'s
+This skill IS the `autopilot` flow with six overrides. Follow `autopilot`'s
 Phase 1 (Plan) → Phase 2 (Execute) → Phase 3 (Review) → Phase 4 (Fix loop)
 exactly — same dispatch rules (one Agent call per task, parallel only for
 different-file tasks, subagents don't spawn subagents, round cap default 2) —
@@ -68,7 +68,8 @@ Unattended means no confirmer is present, so defer instead of confirm.
 
 Use autopilot's Phase 5 exactly — same three headings, same plain language,
 same rules — with one heading added, and the unsafe list folded into the
-last one:
+last one. The prose itself follows autopilot's Phase 5 style: one line per
+item, no paragraphs, cut any explanation longer than the thing it explains.
 
 ```
 ## What I did
@@ -79,6 +80,8 @@ last one:
 
 ## What I assumed
 - The staging cluster is the target. You said "staging" but not which one.
+- Wrote the export as one function, not a plugin system. Swap to a registry
+  if a second export format shows up.
 - Nothing else. Everything came from your answers up front.
 
 ## What you need to do next
@@ -111,6 +114,20 @@ record if the session dies. Write it at the end of Phase 1 and keep it current
 through every state change, and append the Override 4 summary — Done,
 Assumptions, Deferred (unsafe), Blocked — to it when the run ends, so the file
 matches the report they wake up to.
+
+## Override 6 — Lazy by default, and say what you skipped
+
+autopilot's `## Build lazy` rules apply unchanged — same ladder, same
+`ponytail:` comment convention, same never-simplify-away list — for every
+executor, review, and fix-agent brief, not just the planner's. That's the
+unattended teeth: nobody is awake to say "that's more than I asked for," so
+when a task is ambiguous about how much to build, build the smaller thing.
+
+A deliberate simplification with a known ceiling is an assumption: one line
+under **What I assumed** naming the ceiling and upgrade path (Override 4's
+example shows the shape). The guardrail still holds — validation, data-loss
+error handling, security, accessibility, anything explicitly requested — no
+human is awake to catch a shortcut that ate a safety check.
 
 ## Don't stall
 
