@@ -112,8 +112,9 @@ and teaches the user your comparisons are theatre.
 ## Phase 2: Start the canvas and tell them to open it
 
 The canvas is the `excalidraw` MCP server. Check it's registered first; if
-it isn't, print this and carry on with a mermaid fence in the terminal,
-saying plainly that there's no adjustable canvas this run:
+it isn't, print this and carry on with the `archify` skill for a static HTML
+diagram (a mermaid fence if archify isn't installed either), saying plainly
+that there's no adjustable canvas this run:
 
 ```bash
 claude mcp add excalidraw --scope user \

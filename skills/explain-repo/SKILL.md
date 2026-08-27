@@ -69,11 +69,11 @@ joined yesterday, rewrite it.
 
 ### 2. The picture
 
-Hand the drawing to the `architecture-diagram` skill — invoke it with the Skill
-tool and give it the component list you built in Phases 2-3 (name, type
-— frontend/backend/database/cloud/security/queue/external — and what connects
-to what) so it doesn't re-read the repo. It writes a self-contained HTML+SVG
-file; save it next to the report and link it.
+Hand the drawing to the `archify` skill — invoke it with the Skill tool, ask
+for an `architecture` diagram, and give it the component list you built in
+Phases 2-3 (name, type — frontend/backend/database/cloud/security/queue/external
+— and what connects to what) so it doesn't re-read the repo. It writes a
+self-contained HTML+SVG file; save it next to the report and link it.
 
 Constraints to pass through: twelve components maximum, `External/Generic`
 styling with a dashed edge for anything outside this repo, and an explicit

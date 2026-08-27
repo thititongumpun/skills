@@ -70,10 +70,11 @@ retention/compaction choice. Weigh 2-3 approaches with trade-offs and commit
 to a recommendation with a one-line rationale, then confirm scope with the
 user before finalizing — don't just present a menu.
 
-**Diagram**: default to Mermaid (renders natively in Claude Code/artifacts).
-Use flowcharts for producer→topic→consumer data flow, sequence diagrams for
-request/response or Streams processing order, and component diagrams for
-multi-service/cluster architecture. Show partition/consumer-group
+**Diagram**: default to the `archify` skill — invoke it with the Skill tool
+and hand it the topology (Mermaid source is accepted input). Use `workflow`
+for producer→topic→consumer data flow, `sequence` for request/response or
+Streams processing order, and `architecture` for multi-service/cluster
+layouts. If archify isn't installed, emit a Mermaid fence and say so. Show partition/consumer-group
 relationships explicitly when they're the point of the diagram.
 
 **Plan tasks**: break Kafka feature work into concrete implementation
@@ -242,7 +243,8 @@ assuming parity with open-source Flink.
 
 - **Design**: recommended approach + rationale, topic/schema/partitioning
   specifics, and open decisions for the user.
-- **Diagrams**: Mermaid source, scoped to the question asked (don't diagram
+- **Diagrams**: an archify HTML file (Mermaid fence if archify is missing),
+  scoped to the question asked (don't diagram
   the whole system when only one flow was asked about).
 - **Implement**: the code/config, the check that proves it runs, and any
   setting deliberately left at its default called out — silence about a

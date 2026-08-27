@@ -53,8 +53,8 @@ if a session ends before the skill got to shut it down. It costs ~6ms when
 nothing is running. Via `npx skills add` there's no hook, so a killed session
 can leave the canvas up — `npx -y mcp-excalidraw-server stop` clears it.
 
-Without it the skill still works, it just can't draw: it degrades to a
-mermaid fence in the terminal and says so. Needs `node` on `PATH` and a
+Without it the skill still works, it just can't draw an adjustable canvas: it
+degrades to an **archify** HTML diagram (or a mermaid fence) and says so. Needs `node` on `PATH` and a
 browser on the same machine — **you open `http://127.0.0.1:3000` yourself**,
 nothing opens it for you. Explain mode additionally publishes a shareable
 page, which needs the Artifact tool.
@@ -114,8 +114,8 @@ Claude Code syntax — elsewhere you'd wire up the context7 MCP server yourself.
 **Claude Code only**: `autopilot` and `yolo` (they need subagents and a todo
 tool), and `whiteboard`'s shareable page (it needs the Artifact tool).
 Whiteboard's canvas is an MCP server, so it works in any MCP-capable agent;
-its thinking works anywhere — you just get the mermaid fence instead of the
-picture.
+its thinking works anywhere — you just get an archify HTML diagram instead of
+the live picture.
 
 ## Skills
 
@@ -143,11 +143,8 @@ picture.
   write and hands back a plain-language summary, one diagram, every external
   service it talks to that isn't in the tree, and an explicit list of what it
   couldn't work out — rather than a confident guess. Read-only. Wants
-  codegraph (see above) and draws its diagram with **architecture-diagram**.
-- **architecture-diagram** — a system/cloud/network diagram as one dark-themed,
-  self-contained HTML+SVG file with copy, PNG, and PDF buttons. Third-party,
-  MIT, from [Cocoon AI](https://github.com/Cocoon-AI/architecture-diagram-generator);
-  `explain-repo` uses it to draw its picture.
+  codegraph (see above) and draws its diagram with **archify** ([tt-a1i](https://github.com/tt-a1i/archify),
+  MIT) if that skill is installed; falls back to a mermaid fence if it isn't.
 - **skills-doctor** — what's missing on this machine and which skill each gap
   kills. Reports and prints commands; never installs on its own.
 
