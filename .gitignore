@@ -6,3 +6,6 @@ skills-lock.json
 # Scratch dirs the whiteboard skill's companion server writes
 .whiteboard/
 .superpowers/
+
+# Serena MCP local index/memories
+.serena/

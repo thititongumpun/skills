@@ -37,7 +37,7 @@ their time and yours.
 ## Author in mermaid, hand over shapes
 
 You still *write* mermaid — it's the compact thing you can revise, it
-survives into the summary, and `pptx-diagram` consumes it later. But it is
+survives into the summary, and `mfec-pptx-diagram` consumes it later. But it is
 no longer what the user looks at. `create_from_mermaid` converts it once
 into real Excalidraw elements, and from that moment **the canvas is the
 source of truth, not your mermaid**. The user is about to change it.

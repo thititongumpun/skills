@@ -28,7 +28,7 @@ bash .agents/skills/skills-doctor/scripts/doctor.sh
 
 Or in Claude Code: `/skills-doctor` — the same check plus the harness tools
 (subagents, `AskUserQuestion`, `Artifact`) that a shell can't see. It reports
-per skill, so you get "pptx-diagram is dead" rather than "officecli missing",
+per skill, so you get "mfec-pptx-diagram is dead" rather than "officecli missing",
 and prints the exact install command for each gap. `--fix` offers to run the
 safe ones. It never installs anything on its own.
 
@@ -105,7 +105,7 @@ them from your project's `AGENTS.md` — copy the table from
 ## Skills
 Read the matching file in full before acting on its topic:
 - `.agents/skills/confluent-kafka-developer/SKILL.md` — Kafka/Confluent design, review, diagrams
-- `.agents/skills/pptx-diagram/SKILL.md` — Mermaid → PowerPoint
+- `.agents/skills/mfec-pptx-diagram/SKILL.md` — Mermaid → PowerPoint
 ```
 
 Caveats: discovery is manual (the agent loads a skill because `AGENTS.md` says
@@ -135,7 +135,7 @@ the live picture.
   team. Never implements. Needs the excalidraw MCP (see above).
 - **fetch-403** — recover a page the fetcher was refused, without quietly
   falling back to memory.
-- **pptx-diagram** — Mermaid → editable PowerPoint shapes via
+- **mfec-pptx-diagram** — Mermaid → editable PowerPoint shapes via
   [officecli](https://officecli.ai). Install it first —
   `npm install -g @officecli/officecli`, or `brew install officecli` — this
   skill does nothing at all without it.

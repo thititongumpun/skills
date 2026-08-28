@@ -18,13 +18,13 @@ esac
 IFS= read -r -d '' DEPS <<'EOF' || true
 node|hard|whiteboard|canvas server won't start
 curl|hard|fetch-403|rung 1 can't run at all
-officecli|hard|pptx-diagram|entire skill is dead, zero fallback
+officecli|hard|mfec-pptx-diagram|entire skill is dead, zero fallback
 markdown|soft|fetch-403|pages come back as raw HTML instead of markdown
 gh|soft|fetch-403|no GitHub-API rung for private repo URLs
 browser|soft|whiteboard|the canvas needs an open tab to convert or export
 excalidraw|soft|whiteboard|no adjustable canvas; degrades to a mermaid fence
 superpowers|soft|autopilot|its planner/reviewer can't invoke brainstorming or systematic-debugging
-context7|soft|kafka admin+developer, autopilot, yolo, fetch-403, pptx-diagram|version-pinned library docs; falls back to fetching pages
+context7|soft|kafka admin+developer, autopilot, yolo, fetch-403, mfec-pptx-diagram|version-pinned library docs; falls back to fetching pages
 confluent|soft|confluent-kafka-admin, confluent-kafka-developer|emitted CLI commands go unverified
 terraform|soft|confluent-kafka-admin|can't fmt/validate the TF it writes
 architecture-diagram|soft|explain-repo|no HTML/SVG picture; the report degrades to a mermaid fence
