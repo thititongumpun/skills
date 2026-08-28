@@ -262,14 +262,15 @@ comparison table is worse than one without it.
 
 ## Verify before claiming it worked
 
-Three checks, all of them, every time — they catch different failures and none
-of them subsumes the others.
+Four checks, all of them, every time — they catch different failures and none
+of them subsumes the others. In particular `officecli view issues` reporting
+zero does **not** mean the text fits; see the `autoFit=shape` trap below.
 
 ```bash
 officecli get deck.pptx '/slide[6]' --depth 1     # shapes + connectors present?
 officecli query deck.pptx ':contains("[")'        # leftover placeholders — must be empty
 officecli view deck.pptx issues                   # text overflowing its own shape
-python3 ~/.claude/skills/mfec-pptx-diagram/assets/check-layout.py deck.pptx
+python3 ~/.claude/skills/mfec-pptx-diagram/assets/check-layout.py deck.pptx   # off-slide, overlap, overfull
 officecli validate deck.pptx                      # after any animation work
 ```
 
@@ -293,11 +294,59 @@ means too much content, not a font problem. Never set an explicit `fontSize`
 to make text fit; the master owns the type scale.
 
 It also flags a *text* shape crossing the slide edge. It flags nothing else:
-not a picture, not a diagram group, not two shapes on top of each other.
+not a picture, not a diagram group, not two shapes on top of each other, and
+not any box left at the template's default `autoFit=shape`.
 
 `issues` reports one pre-existing overflow on the template's `/slide[5]` spec
 table — that's the template's, not yours. Ignore it, or delete that sample
 slide.
+
+### Text that grows past the slide — the `autoFit=shape` trap
+
+Every text box in this template ships with `autoFit=shape` (OOXML
+`spAutoFit`): PowerPoint resizes the box to its text instead of clipping.
+That makes overflow invisible to both checks above. `view issues` skips
+grow-to-fit shapes entirely, and the stored `height` is just the last cached
+value, so a box holding three times its capacity reports **0 issues** and
+`layout ok` — then renders halfway down the next slide's worth of space.
+
+`check-layout.py` measures it the only reliable way: it copies the deck, turns
+`autoFit` off on every grow-to-fit box, and reads back the height each one
+actually asks for.
+
+```
+OVERFULL   /slide[7]/shape[@id=100091] '"Scenario 1 — ปิด R (INFO)…' needs 17.2cm, box is 8.0cm — runs 5.0cm off the slide bottom. Split it across slides
+OVERFULL   /slide[4]/shape[@id=100019] '"1. โจทย์และข้อจำกัด…' needs 12.5cm, box is 10.7cm — grows into /slide[4]/shape[@id=100073] '"อ้างอิง: docs.confluent.'
+grows       /slide[2]/shape[@id=100005] '"อาการ: L เข้ามาก่อน R…' needs 8.9cm, box is 8.0cm — 0.9cm past its box, still lands clear
+```
+
+`OVERFULL` fails the run; the lowercase `grows` lines are notes — a box that
+spills a few millimetres and still lands clear of everything is not worth
+failing over.
+
+**The fix is fewer words, not a smaller font.** `--prop autoFit=shrink` and a
+hand-set `fontSize` both keep the text inside by taking it off the template's
+type scale, and a 9pt paragraph on a projector is not communication. Split the
+content across two slides — that is almost always what an overfull box is
+telling you.
+
+### Budget the text before you write it
+
+Measured against the master's 14pt, with `autoFit` off so the box cannot lie:
+
+| Box | Size | Holds |
+|---|---|---|
+| `/slide[2]` bullet column | 9.98 × 8.04 cm | **14 wrapped lines** (15 overflows) |
+| `/slide[3]` body column | 24.96 × 10.69 cm | **18 wrapped lines** (19 overflows) |
+
+*Wrapped* lines, not paragraphs — one long sentence in the narrow slide-2
+column is three or four of them, and Thai wraps sooner than Latin at the same
+character count.
+
+Count before you fill. Two numbered scenarios with three sub-points each do
+not fit one column; that is two slides. If the user hands you more prose than
+the budget allows, split it and say you did — silently shrinking it to fit is
+the failure this whole section exists to prevent.
 
 ### Off the slide, or on top of something — `check-layout.py`
 

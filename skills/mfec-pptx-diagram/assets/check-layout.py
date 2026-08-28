@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Geometry check for an MFEC deck: nothing off the slide, no diagram sitting
-on top of slide text.
+on top of slide text, no text box quietly growing past the slide edge.
 
     python3 check-layout.py deck.pptx      # exit 1 if anything is wrong
 
@@ -8,9 +8,12 @@ Complements `officecli view <deck> issues`, which catches text overflowing its
 own shape but sees neither shapes leaving the slide nor shapes colliding.
 """
 import itertools
+import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 
 UNITS = {"emu": 1, "cm": 360000, "pt": 12700, "in": 914400}
 CM = 360000
@@ -59,6 +62,74 @@ def elements(deck):
         yield path, label, props.get("name", ""), text, box
 
 
+def grown_boxes(deck, els, slide_height):
+    """Text boxes set to grow-to-fit, measured for how far they actually grow.
+
+    `autoFit=shape` (OOXML spAutoFit) tells PowerPoint to resize the box to its
+    text. The stored extent is only the last cached value, and officecli's own
+    `view issues` skips these shapes entirely — so an overfull box reports
+    clean both there and in the bounds check above, then renders off the bottom
+    of the slide. Measure it by asking the same question with the auto-grow
+    removed: flip autoFit off on a throwaway copy and read the height it asks
+    for.
+
+    Returns (hard, soft): hard problems fail the run, soft ones are printed as
+    notes — a box that grows a little but still lands clear of everything is
+    not worth failing over."""
+    out = officecli("query", deck, "shape, textbox", "--compact",
+                    "--fields", "autoFit,x,y,width,height")
+    grow = {}
+    for line in out.splitlines():
+        col = line.split("\t")
+        if len(col) < 8 or "autoFit=shape" not in col[3]:
+            continue
+        box = [emu(c.split("=", 1)[1]) for c in col[4:8]]
+        if all(v is not None for v in box):
+            grow[col[0]] = (col[2], box)
+    if not grow:
+        return [], []
+
+    tmp = tempfile.mkdtemp(prefix="mfec-layout-")
+    probe = os.path.join(tmp, "probe.pptx")
+    try:
+        shutil.copy(deck, probe)
+        for path in grow:
+            officecli("set", probe, path, "--prop", "autoFit=none")
+        officecli("save", probe)
+        report = officecli("view", probe, "issues", "--type", "format")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    hard, soft = [], []
+    for line in report.splitlines():
+        m = re.search(r"(/slide\[\d+\]/shape\[@id=\d+\]).*?"
+                      r"needs? (\d+)pt, usable (\d+)pt", line)
+        if not m or m.group(1) not in grow:
+            continue
+        path = m.group(1)
+        text, (x, y, w, stored) = grow[path]
+        needed = float(m.group(2)) * UNITS["pt"]
+        head = (f"{path} {text[:32]!r} needs {needed/CM:.1f}cm, "
+                f"box is {stored/CM:.1f}cm")
+
+        if y + needed > slide_height:
+            hard.append(f"OVERFULL   {head} — runs {(y + needed - slide_height)/CM:.1f}cm "
+                        f"off the slide bottom. Split it across slides")
+            continue
+        hit = [e for e in els
+               if e[0] != path and e[0].split("/")[1] == path.split("/")[1]
+               and e[3] not in ("(empty)", "")
+               and e[4][1] < y + needed and e[4][1] + e[4][3] > y
+               and e[4][0] < x + w and e[4][0] + e[4][2] > x]
+        if hit:
+            hard.append(f"OVERFULL   {head} — grows into {hit[0][0]} "
+                        f"{hit[0][3][:25]!r}. Split it across slides")
+        else:
+            soft.append(f"grows       {head} — {(needed - stored)/CM:.1f}cm past "
+                        f"its box, still lands clear")
+    return hard, soft
+
+
 def main(deck):
     width, height = slide_size(deck)
     els = list(elements(deck))
@@ -97,7 +168,12 @@ def main(deck):
                 f"OVERLAP    {a[0]} {(a[2] or a[3])[:25]!r} over "
                 f"{b[0]} {(b[2] or b[3])[:25]!r} ({frac:.0%} of the smaller)")
 
+    hard, soft = grown_boxes(deck, els, height)
+    problems += hard
+
     print("\n".join(problems) if problems else "layout ok")
+    if soft:
+        print("\n".join(soft))
     return 1 if problems else 0
 
 
