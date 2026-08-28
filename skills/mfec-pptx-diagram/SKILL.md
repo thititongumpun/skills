@@ -1,6 +1,6 @@
 ---
 name: mfec-pptx-diagram
-description: Turn a Mermaid diagram into a PowerPoint slide on the MFEC branded template, using officecli's native mermaid→shapes synthesizer. Produces real editable PowerPoint shapes and connectors (not a flat image) when the diagram type supports it. Use when the user wants a diagram in a .pptx / PowerPoint deck, wants to export a mermaid diagram to slides, or asks for an architecture/flow/sequence diagram they can edit in PowerPoint.
+description: Turn a Mermaid diagram into a PowerPoint slide on the MFEC branded template, using officecli's native mermaid→shapes synthesizer. Produces real editable PowerPoint shapes and connectors (not a flat image) when the diagram type supports it, and can animate a packet travelling the route, stage captions step by step, and build the comparison table and takeaway box around it. Use when the user wants a diagram in a .pptx / PowerPoint deck, wants to export a mermaid diagram to slides, asks for an architecture/flow/sequence diagram they can edit in PowerPoint, or wants a slide to show data moving from A to B.
 ---
 
 # Mermaid → MFEC PowerPoint diagram
@@ -16,7 +16,7 @@ blank white slide.
 cp ~/.claude/skills/mfec-pptx-diagram/assets/MFEC_PowerPoint_Template.pptx deck.pptx
 officecli add deck.pptx / --type slide --prop layout="Title and Content" --prop title="Architecture"
 officecli add deck.pptx '/slide[6]' --type diagram --prop render=native \
-  --prop x=2cm --prop y=3.5cm --prop width=29.9cm --prop height=14cm \
+  --prop x=2cm --prop y=5cm --prop width=29.9cm --prop height=12.5cm \
   --prop mermaid="flowchart TD; A[Producer] --> B[(Topic)]; B --> C[Consumer]"
 ```
 
@@ -102,7 +102,9 @@ officecli add deck.pptx / --type slide --prop layout="Title and Content" --prop 
 
 Layouts available: `Title Slide`, `Title and Content`, `Two Content`,
 `Blank`, `Title & Non bulleted text`, `Contents slide layout`. Then use
-`x=2cm y=3.5cm width=29.9cm height=14cm` to clear the title band.
+`x=2cm y=5cm width=29.9cm height=12.5cm`. Not `y=3.5cm` — that layout's
+title placeholder is 104pt tall and runs to `y=4.66cm`, so a diagram starting
+higher lands underneath it.
 
 Both boxes are bounds, not a stretch — aspect is preserved and the diagram
 centres inside. Diagram text inherits the master's Prompt / TH SarabunPSK.
@@ -153,7 +155,7 @@ leave it off for MFEC decks.
 and officecli places the group off the slide edge — nodes and labels are
 simply cut off, and `officecli view issues` stays silent about it. Keep every
 box inside `x+width ≤ 32cm` and `y+height ≤ 17.5cm` (leaving the title band
-above `y=3.4cm`), and re-check the group's real geometry after the add — a
+clear of the title band), and re-check the group's real geometry after the add — a
 wide flowchart grows to fill the width you gave it.
 
 Add returns one group path, e.g. `/slide[1]/group[1]`. The whole diagram
@@ -168,6 +170,96 @@ Child font sizes re-bake on resize, so text stays proportional. A lone
 `width` or `height` changes only that axis — add `keepAspect=true`, or pass
 both for an exact box.
 
+## Make the flow readable — motion, steps, and the slides around it
+
+A static box-and-arrow picture asks the audience to work out the direction for
+themselves. Three devices fix that, in increasing cost.
+
+### A packet that travels the route — `flow-motion.py`
+
+PowerPoint will not animate a shape inside a group, and a native diagram *is*
+a group — `officecli add --type animation` on the group or any of its nodes is
+rejected outright. So the moving thing has to be a separate top-level shape
+riding over the diagram. The bundled helper does that:
+
+```bash
+python3 ~/.claude/skills/mfec-pptx-diagram/assets/flow-motion.py \
+  deck.pptx '/slide[6]' Producer Kafka Consumer
+# → /slide[6]/shape[@id=100001]: 2 hop(s) Producer -> Kafka -> Consumer
+```
+
+It finds each node by its text (case-insensitive substring; an ambiguous or
+missing name is an error listing what it did find), drops a marker on the first
+one, and adds one motion leg per hop, each `trigger=afterPrevious`. Flags:
+`--size` (cm, default 0.9), `--fill` (default `#FF6B00`), `--duration` (ms per
+hop), `--loop` to run continuously while the slide is up.
+
+Legs are cumulative on purpose: `animMotion` is written with `origin="layout"`,
+so every leg is measured from the marker's *original* position, and hop 2 of a
+three-node route reads `M 0.2067 0 L 0.4134 0 E`. Writing each hop as its own
+`M 0 0 L …` sends the marker back to the start every time.
+
+Run it after the diagram is placed and saved — it reads the node coordinates
+out of the file.
+
+### Reveal the story one step at a time
+
+Entrance animations work on any top-level shape, so caption boxes can appear in
+step with the marker:
+
+```bash
+officecli add deck.pptx '/slide[6]/shape[@id=100010]' --type animation \
+  --prop effect=fade --prop class=entrance --prop trigger=afterPrevious --prop duration=400
+```
+
+`trigger=onClick` for presenter-paced, `afterPrevious` for hands-off. Order is
+the order you add them. The diagram itself cannot be staged this way; it
+arrives whole.
+
+### Morph between two states
+
+For "before / after" — a queue filling, a failover — duplicate the slide with
+`--from`, move the marker on the copy, and set `--prop transition=morph` on the
+second. PowerPoint tweens the shapes between them. Needs PowerPoint 2019 or
+365; older versions fall back to a cut, so don't hang the explanation on it.
+
+## Diagram, comparison, conclusion — the three-slide shape
+
+One diagram rarely answers the question on its own. When the user is comparing
+options or expects a verdict, build the deck as a short argument:
+
+**1. The diagram slide** — the flow, animated as above. Title says what the
+system does, not "Architecture".
+
+**2. The comparison table** — clone `/slide[4]` (9×3) and fill it. Cells are
+`tr[R]/tc[C]`, both 1-based; `table-row`/`table-cell` are not valid path
+segments:
+
+```bash
+officecli add deck.pptx / --from '/slide[4]'
+officecli query deck.pptx 'table' --compact          # → /slide[7]/table[@id=100008] [table 9x3]
+officecli set deck.pptx '/slide[7]/table[@id=100008]/tr[1]/tc[2]' --prop text="Kafka"
+officecli set deck.pptx '/slide[7]/table[@id=100008]/tr[1]/tc[3]' --prop text="RabbitMQ"
+officecli set deck.pptx '/slide[7]/table[@id=100008]/tr[2]/tc[1]' --prop text="Ordering"
+```
+
+The table id is renumbered on clone, so read it back — `@id=6` is the id on the
+sample, not on your copy. The same `query` reports the real grid (`9x3`); delete
+the rows you don't fill — an empty row reads as
+missing data. Use `/slide[5]`'s 6×2 tables instead for label/value specs.
+
+**3. The result box** — one top-level textbox with the takeaway, not a
+restatement of the diagram. On a `/slide[2]` clone the bullet column is already
+there; on a diagram-only slide add one under the diagram:
+
+```bash
+officecli add deck.pptx '/slide[6]' --type textbox --prop text="Ordering is per-partition, so a single consumer group keeps per-key order." \
+  --prop x=2cm --prop y=17.6cm --prop width=29.9cm --prop height=1.2cm
+```
+
+Skip any of the three the content doesn't need — a deck with an empty
+comparison table is worse than one without it.
+
 ## Verify before claiming it worked
 
 Three checks, all of them, every time — they catch different failures and none
@@ -178,6 +270,7 @@ officecli get deck.pptx '/slide[6]' --depth 1     # shapes + connectors present?
 officecli query deck.pptx ':contains("[")'        # leftover placeholders — must be empty
 officecli view deck.pptx issues                   # text overflowing its own shape
 python3 ~/.claude/skills/mfec-pptx-diagram/assets/check-layout.py deck.pptx
+officecli validate deck.pptx                      # after any animation work
 ```
 
 The `query` must come back empty. Every hit is a template placeholder still
