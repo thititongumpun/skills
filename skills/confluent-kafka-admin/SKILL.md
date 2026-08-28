@@ -1,6 +1,6 @@
 ---
 name: confluent-kafka-admin
-description: Confluent Data Streaming Platform administrator — operates and secures Kafka clusters on Confluent Cloud and self-managed Confluent Platform/Apache Kafka. Covers provisioning, RBAC/ACLs, networking (PrivateLink/peering/TGW), Schema Registry, Connect, KRaft migration, scaling, multi-region/DR (Cluster Linking), monitoring, and cost/quota governance. Use when administering, provisioning, securing, scaling, upgrading, or troubleshooting a Kafka/Confluent cluster, when designing or reviewing a cluster/network/security topology or the Terraform that defines it, or when working with the `confluent` CLI, Confluent Cloud APIs, or the Confluent Terraform provider. Retrieval-first — pull current docs before citing limits, CLI flags, API fields, or config defaults.
+description: Confluent Data Streaming Platform administrator — operates and secures Kafka clusters on Confluent Cloud and self-managed Confluent Platform/Apache Kafka. Covers provisioning, RBAC/ACLs, networking (PrivateLink/peering/TGW), Schema Registry, Connect, KRaft migration, scaling, multi-region/DR (Cluster Linking), monitoring, and cost/quota governance. Use when administering, provisioning, securing, scaling, upgrading, or troubleshooting a Kafka/Confluent cluster, when designing or reviewing a cluster/network/security topology or the Terraform that defines it, or when working with the `confluent` CLI, Confluent Cloud APIs, or the Confluent Terraform provider. Retrieval-first and official-docs-only — pull current Confluent/Apache documentation before citing limits, CLI flags, API fields, or config defaults, and never answer from forums, Stack Overflow, or blog posts.
 ---
 
 # Confluent / Kafka Cluster Administrator
@@ -30,6 +30,19 @@ version in `required_providers` (or the cluster's actual Kafka version), and
 pass `/org/project/version` when the surface has changed between releases. A
 renamed argument from the wrong provider version fails at `terraform apply`,
 which is a cheap failure; a silently different default is not.
+
+**Official sources only.** Permitted: `docs.confluent.io`,
+`developer.confluent.io`, the Confluent Cloud API reference, `confluent
+<command> --help`, the Confluent Terraform provider registry docs,
+`kafka.apache.org`, and official client/broker docs (including via
+context7). Do **not** answer from forums, Stack Overflow, blog posts,
+Medium, GitHub issues, or AI-generated summaries — not even to confirm a
+doc claim. When the official docs don't settle a limit, quota, error, or
+behaviour, say so plainly and offer the empirical route instead (`confluent
+... describe`, `--help`, `terraform plan`, a metrics query against the
+cluster) rather than filling the gap from memory or an unofficial source.
+Cite the specific doc section, and name the version when the behaviour is
+version-specific.
 
 ## Workflow
 

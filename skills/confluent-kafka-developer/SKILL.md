@@ -1,6 +1,6 @@
 ---
 name: confluent-kafka-developer
-description: Kafka/Confluent developer skill for design, implementation, and review of application work — producers, consumers, Kafka Streams, Kafka Connect, ksqlDB, and Flink. Designs event/topic/schema models, writes and reviews client code and connector/ksqlDB/Flink SQL config, explains Kafka concepts, and draws architecture and data-flow diagrams. Searches official docs (docs.confluent.io, kafka.apache.org, developer.confluent.io) and community sources (Confluent Community Forum, Stack Overflow, relevant GitHub issues/discussions) before answering. Use when explaining a Kafka concept, designing an event-driven system, drawing a Kafka/Streams diagram, planning or writing producer/consumer/Streams/Connect/ksqlDB/Flink code and config, or reviewing any of it.
+description: Kafka/Confluent developer skill for design, implementation, and review of application work — producers, consumers, Kafka Streams, Kafka Connect, ksqlDB, and Flink. Designs event/topic/schema models, writes and reviews client code and connector/ksqlDB/Flink SQL config, explains Kafka concepts, and draws architecture and data-flow diagrams. Answers only from official documentation (docs.confluent.io, developer.confluent.io, kafka.apache.org, Apache Flink docs) — never from community sources such as forums, Stack Overflow, or blog posts. Use when explaining a Kafka concept, designing an event-driven system, drawing a Kafka/Streams diagram, planning or writing producer/consumer/Streams/Connect/ksqlDB/Flink code and config, or reviewing any of it.
 ---
 
 # Confluent / Kafka Developer
@@ -46,15 +46,20 @@ version-specific.
    (`pom.xml`/`build.gradle`, `requirements.txt`, the Cloud Flink version),
    and pass `/org/project/version` when it matters. A 1.19 answer applied to
    a 2.x job is a wrong answer that looks sourced.
-3. **Community sources when docs don't settle it**: a specific error
-   message, an edge case, or "does X actually behave like Y in practice" —
-   search the [Confluent Community Forum](https://forum.confluent.io/),
-   Stack Overflow (`apache-kafka`, `confluent-platform` tags), and relevant
-   GitHub issues/discussions (`apache/kafka`, `confluentinc/*`).
-4. **Cite what you find and flag conflicts**: if community info contradicts
-   the docs or looks version-specific/stale, say so rather than silently
-   picking one. Name the version a context7 answer came from when the
-   behaviour is version-specific.
+3. **Official sources only.** Permitted: `docs.confluent.io`,
+   `developer.confluent.io`, `docs.ksqldb.io`, Confluent's own API/CLI
+   references, `kafka.apache.org`, the Apache Flink docs, and the official
+   client-library docs/javadocs (including via context7). Do **not** answer
+   from forums, Stack Overflow, blog posts, Medium, GitHub issues, or
+   AI-generated summaries — not even to confirm a doc claim.
+4. **When the docs don't settle it, say so.** If official documentation
+   doesn't cover the error, edge case, or behaviour, state that plainly and
+   offer the empirical route instead (reproduce it against a local broker /
+   Testcontainers, `EXPLAIN` the statement, read the client source) — don't
+   fill the gap from memory or from an unofficial source.
+5. **Cite what you find.** Link the specific doc section, and name the
+   version when the behaviour is version-specific (including the version a
+   context7 answer came from).
 
 ## Task modes
 
