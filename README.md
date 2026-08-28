@@ -81,6 +81,31 @@ target repo has none. Without codegraph at all it still works — it falls back
 to reading entrypoints and config, and says in the report that the map is
 shallower.
 
+### Needed for mfec-pptx-diagram: officecli, and python3 for the helpers
+
+The skill is dead without [officecli](https://officecli.ai) — there is no
+fallback:
+
+```bash
+npm install -g @officecli/officecli    # or: brew install officecli
+```
+
+Two bundled helpers are Python, and both are about catching things officecli's
+own `view issues` cannot see:
+
+- `check-layout.py` — fails when a shape leaves the 33.87 × 19.05 cm slide, or
+  when a diagram covers slide text. `add --type diagram` does not clamp the box
+  it is given, so an oversized one is silently clipped with no warning.
+- `flow-motion.py` — places the travelling marker and its motion legs.
+
+Without `python3` the diagram still lands; you just place and check it by hand.
+
+A headless browser (Chrome/Chromium/Edge, or `playwright install chromium`) is
+optional: it unlocks `render=image` for the mermaid types the editable-shape
+synthesizer rejects — gantt, class, ER, state — and the screenshot check.
+Without one, `render=auto` quietly falls back to native, so ask for
+`render=native` explicitly when you want editable shapes either way.
+
 ### Optional: context7
 
 Several skills query [context7](https://context7.com) for exact library API
@@ -105,7 +130,7 @@ them from your project's `AGENTS.md` — copy the table from
 ## Skills
 Read the matching file in full before acting on its topic:
 - `.agents/skills/confluent-kafka-developer/SKILL.md` — Kafka/Confluent design, review, diagrams
-- `.agents/skills/mfec-pptx-diagram/SKILL.md` — Mermaid → PowerPoint
+- `.agents/skills/mfec-pptx-diagram/SKILL.md` — Mermaid → animated PowerPoint slides
 ```
 
 Caveats: discovery is manual (the agent loads a skill because `AGENTS.md` says
@@ -135,10 +160,15 @@ the live picture.
   team. Never implements. Needs the excalidraw MCP (see above).
 - **fetch-403** — recover a page the fetcher was refused, without quietly
   falling back to memory.
-- **mfec-pptx-diagram** — Mermaid → editable PowerPoint shapes via
-  [officecli](https://officecli.ai). Install it first —
+- **mfec-pptx-diagram** — Mermaid → editable PowerPoint shapes on the MFEC
+  branded template, via [officecli](https://officecli.ai). Also animates a
+  marker travelling the route (PowerPoint won't animate inside a group, so it
+  rides on top), stages captions, and builds the comparison table and takeaway
+  box around the picture. Install officecli first —
   `npm install -g @officecli/officecli`, or `brew install officecli` — this
-  skill does nothing at all without it.
+  skill does nothing at all without it. Its two verification/animation helpers
+  need `python3`; without one you keep the diagram but lose the layout gate
+  that catches a diagram running off the slide edge.
 - **explain-repo** — "what does this repo even do?" Reads a codebase you didn't
   write and hands back a plain-language summary, one diagram, every external
   service it talks to that isn't in the tree, and an explicit list of what it

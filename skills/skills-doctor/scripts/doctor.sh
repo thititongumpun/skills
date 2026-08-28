@@ -19,15 +19,17 @@ IFS= read -r -d '' DEPS <<'EOF' || true
 node|hard|whiteboard|canvas server won't start
 curl|hard|fetch-403|rung 1 can't run at all
 officecli|hard|mfec-pptx-diagram|entire skill is dead, zero fallback
+python3|soft|mfec-pptx-diagram|no layout gate or flow animation; the diagram still lands
 markdown|soft|fetch-403|pages come back as raw HTML instead of markdown
 gh|soft|fetch-403|no GitHub-API rung for private repo URLs
 browser|soft|whiteboard|the canvas needs an open tab to convert or export
+headless|soft|mfec-pptx-diagram|no render=image and no screenshot check; render=auto falls back to native
 excalidraw|soft|whiteboard|no adjustable canvas; degrades to a mermaid fence
 superpowers|soft|autopilot|its planner/reviewer can't invoke brainstorming or systematic-debugging
 context7|soft|kafka admin+developer, autopilot, yolo, fetch-403, mfec-pptx-diagram|version-pinned library docs; falls back to fetching pages
 confluent|soft|confluent-kafka-admin, confluent-kafka-developer|emitted CLI commands go unverified
 terraform|soft|confluent-kafka-admin|can't fmt/validate the TF it writes
-architecture-diagram|soft|explain-repo|no HTML/SVG picture; the report degrades to a mermaid fence
+archify|soft|explain-repo, whiteboard|no HTML/SVG picture; both degrade to a mermaid fence
 codegraph|soft|explain-repo|no symbol graph; falls back to reading entrypoints, shallower map
 rtk|soft|autopilot, yolo|shell calls aren't token-optimized
 EOF
@@ -38,11 +40,19 @@ have() {
     browser)     for b in xdg-open wslview open explorer.exe; do
                    command -v "$b" >/dev/null 2>&1 && return 0
                  done; return 1 ;;
+    # An opener is not a renderer: on WSL explorer.exe passes `browser` while
+    # officecli still has nothing to rasterize with. Check for a real binary.
+    headless)    for b in google-chrome google-chrome-stable chromium \
+                          chromium-browser microsoft-edge firefox; do
+                   command -v "$b" >/dev/null 2>&1 && return 0
+                 done
+                 python3 -c 'import playwright' 2>/dev/null ;;
     # ponytail: presence check only — a registered-but-broken server reads as
     # present. Fine for an advisory row; upgrade to a real parse if it misleads.
     excalidraw)  grep -qs 'mcp-excalidraw-server' "$HOME/.claude.json" .mcp.json 2>/dev/null ;;
     superpowers) grep -qs '"superpowers@' "$PLUGINS" ;;
-    architecture-diagram) [ -f "$HOME/.claude/skills/architecture-diagram/SKILL.md" ] ;;
+    archify)     [ -f "$HOME/.claude/skills/archify/SKILL.md" ] ||
+                 [ -f "$HOME/.agents/skills/archify/SKILL.md" ] ;;
     codegraph)   command -v codegraph >/dev/null 2>&1 ||
                  grep -qs 'codegraph' "$HOME/.claude.json" .mcp.json 2>/dev/null ;;
     context7)    grep -qs 'context7' "$PLUGINS" "$HOME/.claude.json" .mcp.json 2>/dev/null ;;
@@ -60,15 +70,18 @@ fix_for() {
     markdown)  echo "uv tool install html2text  (or: pip install html2text)" ;;
     gh)        case $OS in mac) echo "brew install gh" ;; win) echo "scoop install gh" ;;
                            *) echo "sudo apt install gh" ;; esac ;;
+    headless)  echo "pip install playwright && playwright install chromium  (or install Chrome/Chromium)" ;;
     browser)   case $OS in wsl) echo "sudo apt install wslu" ;;
                            *) echo "install a desktop browser, or open the URL manually" ;; esac ;;
     excalidraw)  echo "claude mcp add excalidraw --scope user -e EXCALIDRAW_NO_AUTOSTART=1 -- npx -y mcp-excalidraw-server" ;;
     superpowers) echo "/plugin install superpowers@claude-plugins-official" ;;
-    architecture-diagram) echo "ships with this plugin — reinstall it, or re-link skills/architecture-diagram" ;;
+    archify)   echo "https://github.com/tt-a1i/archify — or re-link it into ~/.agents/skills/archify" ;;
     context7)    echo "/plugin install context7@claude-plugins-official" ;;
     codegraph)   echo "npm install -g @colbymchenry/codegraph  (then: codegraph init -i in the repo)" ;;
     confluent) echo "https://docs.confluent.io/confluent-cli/current/install.html" ;;
     terraform) echo "https://developer.hashicorp.com/terraform/install" ;;
+    python3)   case $OS in mac) echo "brew install python" ;; win) echo "scoop install python" ;;
+                           *) echo "sudo apt install python3" ;; esac ;;
     rtk)       echo "optional; skip unless you already use rtk" ;;
   esac
 }
