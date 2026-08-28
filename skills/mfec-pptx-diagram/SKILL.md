@@ -149,6 +149,13 @@ leave it off for MFEC decks.
 - Explicit box: `--prop x=2cm --prop y=2cm --prop width=15cm --prop height=10cm` (aspect always preserved).
 - `--prop src=diagram.mmd` loads Mermaid from a file instead of inline.
 
+**The box is not clamped.** Give `x+width > 33.87cm` or `y+height > 19.05cm`
+and officecli places the group off the slide edge — nodes and labels are
+simply cut off, and `officecli view issues` stays silent about it. Keep every
+box inside `x+width ≤ 32cm` and `y+height ≤ 17.5cm` (leaving the title band
+above `y=3.4cm`), and re-check the group's real geometry after the add — a
+wide flowchart grows to fill the width you gave it.
+
 Add returns one group path, e.g. `/slide[1]/group[1]`. The whole diagram
 stays adjustable as a unit:
 
@@ -163,22 +170,75 @@ both for an exact box.
 
 ## Verify before claiming it worked
 
+Three checks, all of them, every time — they catch different failures and none
+of them subsumes the others.
+
 ```bash
 officecli get deck.pptx '/slide[6]' --depth 1     # shapes + connectors present?
 officecli query deck.pptx ':contains("[")'        # leftover placeholders — must be empty
-officecli view deck.pptx issues
+officecli view deck.pptx issues                   # text overflowing its own shape
+python3 ~/.claude/skills/mfec-pptx-diagram/assets/check-layout.py deck.pptx
 ```
 
 The `query` must come back empty. Every hit is a template placeholder still
 sitting where the user's content belongs.
 
-`issues` flags one pre-existing overflow on the template's `/slide[5]` spec
+### Text that doesn't fit its shape — `view issues`
+
+`issues` reports each text body whose lines need more height than the shape
+gives them, with the fix baked in:
+
+```
+[O1] /slide[6]/shape[@id=100002]: text overflow: 9 lines at 18.0pt need 194pt,
+     usable 21pt. suggest.height=7.15cm
+```
+
+Apply `suggest.height` when there is room below, otherwise shorten the text.
+`--prop autoFit=shrink` is the last resort — it keeps the text inside but
+shrinks it off the template's type scale, so a slide full of shrunk boxes
+means too much content, not a font problem. Never set an explicit `fontSize`
+to make text fit; the master owns the type scale.
+
+It also flags a *text* shape crossing the slide edge. It flags nothing else:
+not a picture, not a diagram group, not two shapes on top of each other.
+
+`issues` reports one pre-existing overflow on the template's `/slide[5]` spec
 table — that's the template's, not yours. Ignore it, or delete that sample
 slide.
 
-For a visual check: `officecli view deck.pptx screenshot -o out.png` (or
-`svg`), then read the image. Needs a headless browser; without one, both
-this and `render=image` are unavailable and `render=auto` falls to native.
+### Off the slide, or on top of something — `check-layout.py`
+
+Bundled beside the template. It reads every top-level shape, group, picture
+and table, and fails on two things `issues` cannot see:
+
+- **OFF-SLIDE** — the element's box leaves the 33.87 × 19.05 cm slide. This is
+  the usual way a diagram loses nodes: the group grew past the right or bottom
+  edge and PowerPoint just clips it.
+- **OVERLAP** — a diagram, picture or chart covering ≥10% of a text shape
+  (or of another diagram) on the same slide. Template decoration behind text
+  is not reported; that's design, not a collision.
+
+```
+OFF-SLIDE  /slide[6]/group[@id=100007] '(empty)' box=27.6,15.0 to 34.4,23.0cm slide=33.9x19.1cm
+OVERLAP    /slide[6]/shape[@id=100005] 'TextBox 4' over /slide[6]/group[@id=100007] 'Diagram 100007' (90% of the smaller)
+```
+
+Exit code 1 means unshipped. Fix by moving or shrinking the *diagram* —
+`officecli set deck.pptx '/slide[6]/group[1]' --prop x=... --prop width=... --prop keepAspect=true` —
+never by nudging branded template shapes. On slide-2 clones the bullet column
+runs to about `x=11.7cm`, so the diagram starts at `x=13.5cm`.
+
+Group children are deliberately not bounds-checked: they use the group's own
+coordinate space, so their coordinates mean nothing against the slide. The
+group's box is what gets clipped, and that is what the script tests.
+
+### Visual check
+
+`officecli view deck.pptx screenshot -o out.png` (or `svg`), then read the
+image — the only way to see a node label spilling past its own node outline.
+Needs a headless browser; without one, both this and `render=image` are
+unavailable and `render=auto` falls to native. Say so rather than implying you
+looked at the slide.
 
 ## Shell gotchas
 
