@@ -14,56 +14,9 @@ not per-hop. Both are easy to get wrong by hand.
 """
 import argparse
 import re
-import subprocess
 import sys
 
-UNITS = {"emu": 1, "cm": 360000, "pt": 12700, "in": 914400}
-
-
-def emu(value):
-    m = re.match(r"^(-?[\d.]+)(emu|cm|pt|in)$", value or "")
-    return float(m.group(1)) * UNITS[m.group(2)] if m else None
-
-
-def officecli(*args):
-    r = subprocess.run(("officecli",) + args, capture_output=True, text=True)
-    if r.returncode:
-        sys.exit(f"officecli {' '.join(args)}\n{r.stderr.strip() or r.stdout.strip()}")
-    return r.stdout
-
-
-def slide_size(deck):
-    m = re.search(r"slideWidth=(\S+) slideHeight=(\S+)",
-                  officecli("get", deck, "/", "--depth", "0"))
-    return emu(m.group(1)), emu(m.group(2))
-
-
-def nodes(deck, slide):
-    """Centre of every diagram shape on the slide, keyed by its text.
-
-    Diagram groups are synthesized with childOffset == offset, so the children
-    already carry slide coordinates — unlike a hand-built group."""
-    out = officecli("query", deck, "shape", "--compact",
-                    "--fields", "x,y,width,height")
-    found = {}
-    for line in out.splitlines():
-        col = line.split("\t")
-        if len(col) < 7 or not col[0].startswith(slide + "/group["):
-            continue
-        box = [emu(v.split("=", 1)[1]) for v in col[3:7]]
-        if any(v is None for v in box):
-            continue
-        found[col[2].strip('"')] = (box[0] + box[2] / 2, box[1] + box[3] / 2)
-    return found
-
-
-def resolve(found, name):
-    hits = [k for k in found if name.lower() in k.lower()]
-    if not hits:
-        sys.exit(f"no diagram node matching {name!r}. Found: {sorted(found)}")
-    if len(hits) > 1:
-        sys.exit(f"{name!r} matches {hits} — use a longer, unique fragment")
-    return found[hits[0]]
+from _diagram import centre, nodes, officecli, resolve, slide_size
 
 
 def main():
@@ -83,7 +36,7 @@ def main():
 
     width, height = slide_size(args.deck)
     found = nodes(args.deck, args.slide)
-    points = [resolve(found, s) for s in args.stops]
+    points = [centre(resolve(found, s)) for s in args.stops]
 
     d = args.size * 360000
     x0, y0 = points[0]

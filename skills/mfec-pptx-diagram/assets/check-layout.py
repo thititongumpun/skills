@@ -150,8 +150,15 @@ def main(deck):
     def is_text(e):
         return e[3] not in ("(empty)", "")
 
+    # Captions and legend swatches from annotate.py are meant to sit on the
+    # diagram; only their leaving the slide (checked above) is a problem.
+    def is_annotation(e):
+        return e[2].startswith("Annotation")
+
     for a, b in itertools.combinations(els, 2):
         if a[0].split("/")[1] != b[0].split("/")[1]:        # different slides
+            continue
+        if is_annotation(a) and is_diagram(b) or is_annotation(b) and is_diagram(a):
             continue
         if not (is_diagram(a) and (is_text(b) or is_diagram(b))
                 or is_diagram(b) and is_text(a)):

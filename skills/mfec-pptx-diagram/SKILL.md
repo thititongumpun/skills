@@ -1,6 +1,6 @@
 ---
 name: mfec-pptx-diagram
-description: Turn a Mermaid diagram into a PowerPoint slide on the MFEC branded template, using officecli's native mermaid→shapes synthesizer. Produces real editable PowerPoint shapes and connectors (not a flat image) when the diagram type supports it, and can colour-code the path under discussion, annotate it in a separate accent colour, animate a packet travelling the route, stage captions step by step, and build the comparison table and takeaway box around it. Use when the user wants a diagram in a .pptx / PowerPoint deck, wants to export a mermaid diagram to slides, asks for an architecture/flow/sequence diagram they can edit in PowerPoint, or wants a slide to show data moving from A to B.
+description: Turn a Mermaid diagram into a PowerPoint slide on the MFEC branded template, using officecli's native mermaid→shapes synthesizer. Produces real editable PowerPoint shapes and connectors (not a flat image) when the diagram type supports it, and can colour-code the nodes by role with a matching legend, caption them, animate a packet travelling the route, stage captions step by step, and build the comparison table and takeaway box around it. Use when the user wants a diagram in a .pptx / PowerPoint deck, wants to export a mermaid diagram to slides, asks for an architecture/flow/sequence diagram they can edit in PowerPoint, or wants a slide to show data moving from A to B.
 ---
 
 # Mermaid → MFEC PowerPoint diagram
@@ -170,57 +170,66 @@ Child font sizes re-bake on resize, so text stays proportional. A lone
 `width` or `height` changes only that axis — add `keepAspect=true`, or pass
 both for an exact box.
 
-## Colour-code the diagram, and annotate in a colour of its own
+## Annotate the diagram — `annotate.py`
 
-A diagram on a slide is always being used to make a point, so **the point has
-to be visually separable from the rest of the picture**. Two jobs, two
-colour tracks:
+A diagram is always making a point, so the picture has to carry three things a
+bare flowchart doesn't: **what kind of thing each box is** (fill colour), **what
+the colours mean** (a legend), and **why a particular box is there** (an unboxed
+caption above it). One helper does all three:
 
-- **The path/component being discussed** — recolour those nodes and edges.
-- **Annotations** (numbered callouts, "retries happen here", latency labels) —
-  a separate accent that appears *nowhere* in the diagram body, so a reader
-  can tell commentary from architecture at a glance.
+```bash
+python3 ~/.claude/skills/mfec-pptx-diagram/assets/annotate.py deck.pptx '/slide[6]' \
+  --role 'Stream=#C6F0C2:main stream,out_l,out_r,topic joined' \
+  --role 'Table=#AED9F5:main tbl,info tbl' \
+  --note 'main stream=(ตัว trigger ของ out_l)' \
+  --note 'info tbl=(ตัว lookup ของ out_l)' \
+  --legend tr
+```
 
-`classDef` and `style` in the Mermaid source are **ignored** by
+- `--role LABEL=#RRGGBB:node,node` fills those nodes **and** earns a legend row.
+  Nodes are matched by case-insensitive substring; ambiguous or missing names
+  are an error listing what was found.
+- `--note NODE=text` puts a caption above the node — no fill, no border, so it
+  reads as commentary rather than another box. It flips below the node if there
+  is no room above.
+- `--legend tr|tl|br|bl` draws the swatch column. Top corners are pushed below
+  the title placeholder automatically — `Title and Content`'s title runs to
+  y=4.66cm, and a legend at the literal corner lands on top of it.
+
+Also `--note-size` (default 11pt) and `--note-color` (default `#333333`).
+
+**`classDef` and `style` in the mermaid source are silently ignored** by
 `render=native` — every node comes back in officecli's shape-type default
-(`#DAE8FC` rect, `#E1D5E7` cylinder, …). Colour after the add, per shape:
+(`#DAE8FC` rect, `#E1D5E7` cylinder). Colour is only ever applied afterwards,
+which is what `--role` does. Edge labels *are* honoured, so put those in the
+mermaid where they belong:
 
-```bash
-officecli get deck.pptx '/slide[6]/group[1]' --depth 1   # node + connector ids
-officecli set deck.pptx '/slide[6]/group[@id=100000]/shape[@id=100002]' \
-  --prop fill=#FF6B00 --prop line=#B44A00 --prop color=#FFFFFF
-officecli set deck.pptx '/slide[6]/group[@id=100000]/connector[@id=100004]' \
-  --prop color=#FF6B00 --prop lineWidth=2pt
+```
+MS -->|STREAM main join TABLE info_tbl| OL[out_l]
 ```
 
-Annotations are top-level textboxes, not diagram nodes — they must not look
-like one:
+### Choosing the colours
 
-```bash
-officecli add deck.pptx '/slide[6]' --type textbox --prop text="① Retries here" \
-  --prop x=3cm --prop y=13cm --prop width=7cm --prop height=1.4cm \
-  --prop fill=#FFF4E5 --prop line=#FF6B00 --prop color=#7A3B00 --prop size=12pt
-```
+Fill encodes a **category, not an emphasis** — one colour per kind of thing,
+repeated everywhere that kind appears, and every colour in the legend:
 
-Suggested split — MFEC orange carries the emphasis, a muted tint carries the
-commentary, everything else stays in the neutral defaults:
+| Role | fill | Reads as |
+|---|---|---|
+| Stream / in-flight data | `#C6F0C2` | green |
+| Table / materialised state | `#AED9F5` | blue |
+| External topic, boundary | leave the default | neutral |
+| Deprecated / bypassed path | `#F2F2F2` | greyed out |
 
-| Role | fill | line | text |
-|---|---|---|---|
-| Emphasised node / hot path | `#FF6B00` | `#B44A00` | `#FFFFFF` |
-| Annotation callout | `#FFF4E5` | `#FF6B00` | `#7A3B00` |
-| Secondary / deprecated path | `#F2F2F2` | `#9A9A9A` | `#5A5A5A` |
-| Everything else | leave officecli's default | | |
+Three or four categories is the ceiling — past that the legend is doing the
+work the picture should. If you also animate a packet, give it a fill that is
+in **no** role (`flow-motion.py --fill`), or the marker reads as a node.
 
-Three rules keep it readable: **at most two accents per slide** (a third
-reads as decoration), **numbers on the callouts** (①②③) matched to a marker
-on the node so the eye can pair them, and **the flow-motion marker fill
-distinct from both accents** if a packet is also animating — its default
-`#FF6B00` collides with the emphasis colour above, so pass `--fill` when
-both are on the same slide.
+Recolouring diagram nodes is not the restyling the template forbids — that ban
+is on the branded chrome, which stays untouched.
 
-Recolouring diagram nodes is not the same as restyling template shapes —
-the ban above is on the branded chrome, which still stays untouched.
+Everything `annotate.py` adds is named `Annotation …`, and `check-layout.py`
+skips annotation-over-diagram overlaps on that basis. It still flags them for
+running off the slide, so run it afterwards as usual.
 
 ## Make the flow readable — motion, steps, and the slides around it
 

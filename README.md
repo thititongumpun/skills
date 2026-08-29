@@ -97,6 +97,9 @@ own `view issues` cannot see:
   when a diagram covers slide text. `add --type diagram` does not clamp the box
   it is given, so an oversized one is silently clipped with no warning.
 - `flow-motion.py` — places the travelling marker and its motion legs.
+- `annotate.py` — fills the diagram's nodes by role, captions them, and draws
+  the legend for the colours. `classDef`/`style` in the mermaid source are
+  dropped by the native renderer, so colour has to be applied afterwards.
 
 Without `python3` the diagram still lands; you just place and check it by hand.
 
