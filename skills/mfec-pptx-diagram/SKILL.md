@@ -1,6 +1,6 @@
 ---
 name: mfec-pptx-diagram
-description: Turn a Mermaid diagram into a PowerPoint slide on the MFEC branded template, using officecli's native mermaid→shapes synthesizer. Produces real editable PowerPoint shapes and connectors (not a flat image) when the diagram type supports it, and can animate a packet travelling the route, stage captions step by step, and build the comparison table and takeaway box around it. Use when the user wants a diagram in a .pptx / PowerPoint deck, wants to export a mermaid diagram to slides, asks for an architecture/flow/sequence diagram they can edit in PowerPoint, or wants a slide to show data moving from A to B.
+description: Turn a Mermaid diagram into a PowerPoint slide on the MFEC branded template, using officecli's native mermaid→shapes synthesizer. Produces real editable PowerPoint shapes and connectors (not a flat image) when the diagram type supports it, and can colour-code the path under discussion, annotate it in a separate accent colour, animate a packet travelling the route, stage captions step by step, and build the comparison table and takeaway box around it. Use when the user wants a diagram in a .pptx / PowerPoint deck, wants to export a mermaid diagram to slides, asks for an architecture/flow/sequence diagram they can edit in PowerPoint, or wants a slide to show data moving from A to B.
 ---
 
 # Mermaid → MFEC PowerPoint diagram
@@ -169,6 +169,58 @@ officecli remove deck.pptx '/slide[1]/group[1]'
 Child font sizes re-bake on resize, so text stays proportional. A lone
 `width` or `height` changes only that axis — add `keepAspect=true`, or pass
 both for an exact box.
+
+## Colour-code the diagram, and annotate in a colour of its own
+
+A diagram on a slide is always being used to make a point, so **the point has
+to be visually separable from the rest of the picture**. Two jobs, two
+colour tracks:
+
+- **The path/component being discussed** — recolour those nodes and edges.
+- **Annotations** (numbered callouts, "retries happen here", latency labels) —
+  a separate accent that appears *nowhere* in the diagram body, so a reader
+  can tell commentary from architecture at a glance.
+
+`classDef` and `style` in the Mermaid source are **ignored** by
+`render=native` — every node comes back in officecli's shape-type default
+(`#DAE8FC` rect, `#E1D5E7` cylinder, …). Colour after the add, per shape:
+
+```bash
+officecli get deck.pptx '/slide[6]/group[1]' --depth 1   # node + connector ids
+officecli set deck.pptx '/slide[6]/group[@id=100000]/shape[@id=100002]' \
+  --prop fill=#FF6B00 --prop line=#B44A00 --prop color=#FFFFFF
+officecli set deck.pptx '/slide[6]/group[@id=100000]/connector[@id=100004]' \
+  --prop color=#FF6B00 --prop lineWidth=2pt
+```
+
+Annotations are top-level textboxes, not diagram nodes — they must not look
+like one:
+
+```bash
+officecli add deck.pptx '/slide[6]' --type textbox --prop text="① Retries here" \
+  --prop x=3cm --prop y=13cm --prop width=7cm --prop height=1.4cm \
+  --prop fill=#FFF4E5 --prop line=#FF6B00 --prop color=#7A3B00 --prop size=12pt
+```
+
+Suggested split — MFEC orange carries the emphasis, a muted tint carries the
+commentary, everything else stays in the neutral defaults:
+
+| Role | fill | line | text |
+|---|---|---|---|
+| Emphasised node / hot path | `#FF6B00` | `#B44A00` | `#FFFFFF` |
+| Annotation callout | `#FFF4E5` | `#FF6B00` | `#7A3B00` |
+| Secondary / deprecated path | `#F2F2F2` | `#9A9A9A` | `#5A5A5A` |
+| Everything else | leave officecli's default | | |
+
+Three rules keep it readable: **at most two accents per slide** (a third
+reads as decoration), **numbers on the callouts** (①②③) matched to a marker
+on the node so the eye can pair them, and **the flow-motion marker fill
+distinct from both accents** if a packet is also animating — its default
+`#FF6B00` collides with the emphasis colour above, so pass `--fill` when
+both are on the same slide.
+
+Recolouring diagram nodes is not the same as restyling template shapes —
+the ban above is on the branded chrome, which still stays untouched.
 
 ## Make the flow readable — motion, steps, and the slides around it
 
