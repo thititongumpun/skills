@@ -17,6 +17,7 @@ Every shape this adds is named `Annotation …`, which is what check-layout.py
 keys on to allow it to sit over the diagram on purpose.
 """
 import argparse
+import re
 import sys
 
 from _diagram import CM, nodes, officecli, resolve, slide_size, title_bottom
@@ -44,6 +45,27 @@ def add(deck, slide, kind, name, box, *props):
                      *props)
 
 
+def grow_notes(deck, notes):
+    """Give every caption the height its text actually needs.
+
+    A caption is one line by default; a longer one silently clips, because
+    autoFit=none is the only setting that does not lie about the box (see the
+    autoFit=shape trap in SKILL.md). officecli knows the height each text body
+    wants — ask it, then grow the box upwards so the caption keeps sitting on
+    the node."""
+    if not notes:
+        return
+    for line in officecli("view", deck, "issues").splitlines():
+        m = re.search(r"(/slide\[\d+\]/shape\[@id=\d+\]).*?suggest\.height=([\d.]+)cm", line)
+        if not m or m.group(1) not in notes:
+            continue
+        path, want = m.group(1), float(m.group(2)) * CM
+        top = max(notes[path] - want, 0)      # never grow off the slide top
+        officecli("set", deck, path, "--prop", f"height={int(want)}emu",
+                  "--prop", f"y={int(top)}emu")
+        print(f"grew {path} to {want/CM:.1f}cm")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("deck")
@@ -67,7 +89,7 @@ def main():
     if not found:
         sys.exit(f"no diagram shapes under {args.slide} — add the diagram first")
 
-    legend = []
+    legend, notes = [], {}
     for spec in args.role:
         label, rest = pair(spec, "role")
         if ":" not in rest:
@@ -90,12 +112,18 @@ def main():
         ny = y - NOTE_H - NOTE_GAP
         if ny < 0:                       # no room above — sit under the node
             ny = y + h + NOTE_GAP
-        add(args.deck, args.slide, "textbox", f"Annotation note {name}",
-            (nx, ny, nw, NOTE_H),
-            "--prop", f"text={text}", "--prop", "fill=none", "--prop", "line=none",
-            "--prop", f"size={args.note_size}pt", "--prop", f"color={args.note_color}",
-            "--prop", "align=center", "--prop", "autoFit=none")
+        out = add(args.deck, args.slide, "textbox", f"Annotation note {name}",
+                  (nx, ny, nw, NOTE_H),
+                  "--prop", f"text={text}", "--prop", "fill=none",
+                  "--prop", "line=none", "--prop", f"size={args.note_size}pt",
+                  "--prop", f"color={args.note_color}", "--prop", "align=center",
+                  "--prop", "autoFit=none")
+        m = re.search(r"(/slide\[\d+\]/shape\[@id=\d+\])", out)
+        if m:
+            notes[m.group(1)] = ny + NOTE_H      # bottom edge, to grow upwards
         print(f"note on {name!r} at y={ny/CM:.1f}cm")
+
+    grow_notes(args.deck, notes)
 
     if args.legend:
         if not legend:

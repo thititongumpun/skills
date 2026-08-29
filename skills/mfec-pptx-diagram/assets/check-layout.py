@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Geometry check for an MFEC deck: nothing off the slide, no diagram sitting
-on top of slide text, no text box quietly growing past the slide edge.
+on top of slide text, no label colliding inside the diagram, no text box
+quietly growing past the slide edge.
 
     python3 check-layout.py deck.pptx      # exit 1 if anything is wrong
 
@@ -35,6 +36,32 @@ def slide_size(deck):
     m = re.search(r"slideWidth=(\S+) slideHeight=(\S+)",
                   officecli("get", deck, "/", "--depth", "0"))
     return (emu(m.group(1)), emu(m.group(2))) if m else (12192000, 6858000)
+
+
+def labelled(deck):
+    """Diagram nodes/edge-labels and annotation boxes, in slide coordinates.
+
+    Native diagram groups are synthesized with childOffset == offset, so their
+    children already carry slide coordinates. Only `DiagramShape*` children
+    qualify — template decoration groups stack shapes on purpose (a lettered
+    badge is an oval with a textbox on top) and flagging those buries the real
+    hits."""
+    out = officecli("query", deck, "shape, textbox", "--compact",
+                    "--fields", "name,x,y,width,height")
+    for line in out.splitlines():
+        col = line.split("\t")
+        if len(col) < 8:
+            continue
+        name = col[3].split("=", 1)[1] if col[3].startswith("name=") else ""
+        inside = re.search(r"/group\[[^\]]*\]/", col[0])
+        if not (inside and name.startswith("DiagramShape")
+                or not inside and name.startswith("Annotation")):
+            continue
+        props = dict(p.split("=", 1) for p in col[3:8])
+        box = [emu(props[k]) for k in ("x", "y", "width", "height")]
+        if any(v is None for v in box):
+            continue
+        yield col[0], name, col[2].strip('"'), box
 
 
 def elements(deck):
@@ -174,6 +201,27 @@ def main(deck):
             problems.append(
                 f"OVERLAP    {a[0]} {(a[2] or a[3])[:25]!r} over "
                 f"{b[0]} {(b[2] or b[3])[:25]!r} ({frac:.0%} of the smaller)")
+
+    # Inside the diagram: an edge label crossing a node, a caption covering the
+    # box next door. Mermaid lays the nodes out, but the labels it parks on the
+    # edges and the captions annotate.py adds are placed independently.
+    for a, b in itertools.combinations(list(labelled(deck)), 2):
+        if a[0].split("/")[1] != b[0].split("/")[1]:        # different slides
+            continue
+        if not (a[2] or b[2]):                              # two blank boxes
+            continue
+        ax, ay, aw, ah = a[3]
+        bx, by, bw, bh = b[3]
+        ox = min(ax + aw, bx + bw) - max(ax, bx)
+        oy = min(ay + ah, by + bh) - max(ay, by)
+        if ox <= 0 or oy <= 0:
+            continue
+        frac = (ox * oy) / min(aw * ah, bw * bh)
+        if frac >= MIN_OVERLAP:
+            problems.append(
+                f"COLLIDE    {a[0]} {(a[2] or a[1])[:28]!r} over "
+                f"{b[0]} {(b[2] or b[1])[:28]!r} ({frac:.0%} of the smaller). "
+                f"Shorten the edge label, or lay the flowchart out TD")
 
     hard, soft = grown_boxes(deck, els, height)
     problems += hard

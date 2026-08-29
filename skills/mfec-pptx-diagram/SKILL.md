@@ -196,7 +196,9 @@ python3 ~/.claude/skills/mfec-pptx-diagram/assets/annotate.py deck.pptx '/slide[
   the title placeholder automatically — `Title and Content`'s title runs to
   y=4.66cm, and a legend at the literal corner lands on top of it.
 
-Also `--note-size` (default 11pt) and `--note-color` (default `#333333`).
+Also `--note-size` (default 11pt) and `--note-color` (default `#333333`). A
+caption that needs more than one line is grown to fit and re-anchored upwards,
+so it keeps sitting on its node instead of clipping.
 
 **`classDef` and `style` in the mermaid source are silently ignored** by
 `render=native` — every node comes back in officecli's shape-type default
@@ -227,9 +229,38 @@ in **no** role (`flow-motion.py --fill`), or the marker reads as a node.
 Recolouring diagram nodes is not the restyling the template forbids — that ban
 is on the branded chrome, which stays untouched.
 
-Everything `annotate.py` adds is named `Annotation …`, and `check-layout.py`
-skips annotation-over-diagram overlaps on that basis. It still flags them for
-running off the slide, so run it afterwards as usual.
+Everything `annotate.py` adds is named `Annotation …`. `check-layout.py` reads
+that name two ways: an annotation is allowed to sit on the diagram *group*
+(that is the point), but it is still checked against the diagram's individual
+nodes and labels — see below.
+
+### Text colliding inside the diagram
+
+Mermaid lays the nodes out, but the labels it parks on the edges are placed
+independently, and so are the captions. A long one crosses a node:
+
+```
+COLLIDE    /slide[6]/group[@id=100000]/shape[@id=100002] 'main stream' over
+           /slide[6]/group[@id=100000]/shape[@id=100019] 'STREAM main join TABLE info_'
+           (15% of the smaller). Shorten the edge label, or lay the flowchart out TD
+```
+
+`check-layout.py` reports this; nothing else does. `officecli view issues`
+sees only text overflowing its *own* shape, and the plain overlap check works
+on top-level shapes, so an edge label lying across a node is invisible to
+both — the box geometry is legal, the picture is not.
+
+Two fixes, in that order: **shorten the edge label**, or **switch `LR` to
+`TD`** — a vertical edge gives the label the whole row, where a horizontal one
+only has the gap between two nodes, and a label wider than that gap lands on
+the node. On one measured five-node graph, `LR` with `join on txn_key`
+collided and both `TD` spellings were clean.
+
+Widening the diagram box does *not* help: mermaid fixes the node spacing, so a
+wider box scales everything up together and the label overlaps by the same
+fraction. If neither fix is available, drop the label and put the text in a
+caption or the bullet column beside the diagram.
+
 
 ## Make the flow readable — motion, steps, and the slides around it
 
@@ -331,7 +362,7 @@ zero does **not** mean the text fits; see the `autoFit=shape` trap below.
 officecli get deck.pptx '/slide[6]' --depth 1     # shapes + connectors present?
 officecli query deck.pptx ':contains("[")'        # leftover placeholders — must be empty
 officecli view deck.pptx issues                   # text overflowing its own shape
-python3 ~/.claude/skills/mfec-pptx-diagram/assets/check-layout.py deck.pptx   # off-slide, overlap, overfull
+python3 ~/.claude/skills/mfec-pptx-diagram/assets/check-layout.py deck.pptx   # off-slide, overlap, in-diagram collision, overfull
 officecli validate deck.pptx                      # after any animation work
 ```
 
@@ -355,8 +386,9 @@ means too much content, not a font problem. Never set an explicit `fontSize`
 to make text fit; the master owns the type scale.
 
 It also flags a *text* shape crossing the slide edge. It flags nothing else:
-not a picture, not a diagram group, not two shapes on top of each other, and
-not any box left at the template's default `autoFit=shape`.
+not a picture, not a diagram group, not two shapes on top of each other, not
+an edge label lying across a node, and not any box left at the template's
+default `autoFit=shape`.
 
 `issues` reports one pre-existing overflow on the template's `/slide[5]` spec
 table — that's the template's, not yours. Ignore it, or delete that sample
