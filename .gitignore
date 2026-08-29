@@ -9,3 +9,4 @@ skills-lock.json
 
 # Serena MCP local index/memories
 .serena/
+__pycache__/
