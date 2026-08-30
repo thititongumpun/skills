@@ -10,3 +10,6 @@ skills-lock.json
 # Serena MCP local index/memories
 .serena/
 __pycache__/
+
+# Generated skill-doctor reports
+skill-report/

@@ -180,5 +180,9 @@ the live picture.
   MIT) if that skill is installed; falls back to a mermaid fence if it isn't.
 - **skills-doctor** — what's missing on this machine and which skill each gap
   kills. Reports and prints commands; never installs on its own.
+- **sync-skill-installs** — reinstalls this repo's skills into the global and
+  project copies, refreshes the lock hashes, and proves both match source. The
+  three locations don't share files, so editing `skills/` alone changes nothing
+  an agent actually loads.
 
 When to reach for each, in the form agents read: [AGENTS.md](AGENTS.md).

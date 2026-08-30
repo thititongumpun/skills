@@ -16,6 +16,7 @@
     "./skills/fetch-403",
     "./skills/mfec-pptx-diagram",
     "./skills/skills-doctor",
+    "./skills/sync-skill-installs",
     "./skills/whiteboard",
     "./skills/yolo"
   ],

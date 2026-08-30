@@ -12,6 +12,22 @@ Every deck starts as a copy of the MFEC template, so the diagram lands
 inside MFEC branding — master, theme, fonts, colours — rather than on a
 blank white slide.
 
+## Preflight — run this before you write anything
+
+```bash
+command -v officecli >/dev/null && officecli --version || echo "officecli MISSING"
+command -v chromium chrome google-chrome msedge >/dev/null 2>&1 || echo "no headless browser — screenshots unavailable"
+```
+
+`officecli` is a hard dependency with no fallback: without it nothing in this
+skill runs. If it is missing, say so and offer
+`npm install -g --allow-scripts=@officecli/officecli @officecli/officecli`
+(a plain `npm install -g` silently skips the postinstall that fetches the
+binary). **Never write instructions, defaults, or property names you have not
+run** — extrapolating from the documented grammar has produced wrong defaults
+before. If you cannot run it, mark every claim UNVERIFIED and stop before
+editing this file.
+
 ```bash
 cp ~/.claude/skills/mfec-pptx-diagram/assets/MFEC_PowerPoint_Template.pptx deck.pptx
 officecli add deck.pptx / --type slide --prop layout="Title and Content" --prop title="Architecture"
@@ -171,6 +187,14 @@ Child font sizes re-bake on resize, so text stays proportional. A lone
 both for an exact box.
 
 ## Annotate the diagram — `annotate.py`
+
+Before you build an annotation style, get the target picture. "Annotate it"
+or "put it in a separate colour" does not pin down whether the user means a
+boxed callout, an unboxed caption under the node, a role-coloured fill with a
+legend, or all three. Ask for an example or a one-line description of the
+look, or show the smallest possible sample slide first. Building and
+documenting a guessed style has had to be thrown away.
+
 
 A diagram is always making a point, so the picture has to carry three things a
 bare flowchart doesn't: **what kind of thing each box is** (fill colour), **what
@@ -474,6 +498,19 @@ image — the only way to see a node label spilling past its own node outline.
 Needs a headless browser; without one, both this and `render=image` are
 unavailable and `render=auto` falls to native. Say so rather than implying you
 looked at the slide.
+
+## officecli gotchas that cost a round-trip
+
+Each of these was found the hard way; check here before experimenting.
+
+| Doing | Reality |
+|---|---|
+| Addressing a table cell | `/slide[N]/table[@id=M]/tr[R]/tc[C]` — **not** `table-row`/`table-cell`, despite `officecli help pptx` listing those element names. |
+| Animating a diagram node | Refused: animations attach only to a *top-level* `shape`/`chart`. Nodes live inside the diagram group. Put a top-level marker shape on top and animate that — `flow-motion.py` does exactly this. |
+| `officecli get ... --json` on a group | Comes back `{}`. Use the plain text form and parse it. |
+| `query --fields x,y,width,height` on a `group` | Returns empty fields. Group geometry only comes from `officecli get <path>`. |
+| A slide added with `--type slide` | Defaults to the **Title Slide** layout (the cover). Always pass `--prop layout="Title and Content"` for a content slide. |
+| Comparing group children to slide coordinates | Children sit in the group's `childOffset` space — comparing them against the slide box gives a false positive on every template slide. |
 
 ## Shell gotchas
 
