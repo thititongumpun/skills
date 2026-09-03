@@ -163,6 +163,12 @@ the live picture.
   team. Never implements. Needs the excalidraw MCP (see above).
 - **fetch-403** — recover a page the fetcher was refused, without quietly
   falling back to memory.
+- **mfec-kafka-connect** — the change loop for a Kafka Connect connector in an
+  MFEC customer pipeline: house file/connector/topic naming, validate against the
+  worker, diff against live, deploy, watch status, prove the data with the IVT
+  checksums, update the repo README. Carries the traps already hit (two sources
+  sharing a topic, `FilterTimestamp` semantics, secrets in JSON) and the
+  Debezium 1.x → 3.x property renames.
 - **mfec-pptx-diagram** — Mermaid → editable PowerPoint shapes on the MFEC
   branded template, via [officecli](https://officecli.ai). Also animates a
   marker travelling the route (PowerPoint won't animate inside a group, so it
@@ -171,7 +177,11 @@ the live picture.
   `npm install -g @officecli/officecli`, or `brew install officecli` — this
   skill does nothing at all without it. Its two verification/animation helpers
   need `python3`; without one you keep the diagram but lose the layout gate
-  that catches a diagram running off the slide edge.
+  that catches a diagram running off the slide edge. Diagram slide only — for
+  a whole deck built from documents it points you at
+  [ppt-master](https://github.com/hugohe3/ppt-master) (MIT,
+  `npx skills add hugohe3/ppt-master`), installed side by side rather than
+  bundled: it's 115 MB and self-checks its own files.
 - **explain-repo** — "what does this repo even do?" Reads a codebase you didn't
   write and hands back a plain-language summary, one diagram, every external
   service it talks to that isn't in the tree, and an explicit list of what it

@@ -1,6 +1,6 @@
 ---
 name: mfec-pptx-diagram
-description: Turn a Mermaid diagram into a PowerPoint slide on the MFEC branded template, using officecli's native mermaid→shapes synthesizer. Produces real editable PowerPoint shapes and connectors (not a flat image) when the diagram type supports it, and can colour-code the nodes by role with a matching legend, caption them, animate a packet travelling the route, stage captions step by step, and build the comparison table and takeaway box around it. Use when the user wants a diagram in a .pptx / PowerPoint deck, wants to export a mermaid diagram to slides, asks for an architecture/flow/sequence diagram they can edit in PowerPoint, or wants a slide to show data moving from A to B.
+description: Turn a Mermaid diagram into an editable PowerPoint slide on the MFEC branded template via officecli — real shapes and connectors, colour-coded by role with a legend and captions, optionally animated, with the comparison table and takeaway slides around it. Use when the user wants a diagram in a .pptx / PowerPoint deck, wants to export mermaid to slides, or wants a slide showing data moving from A to B.
 ---
 
 # Mermaid → MFEC PowerPoint diagram
@@ -11,6 +11,13 @@ one command — do not hand-place shapes and connectors.
 Every deck starts as a copy of the MFEC template, so the diagram lands
 inside MFEC branding — master, theme, fonts, colours — rather than on a
 blank white slide.
+
+This skill does the diagram slide and the two slides around it — nothing
+more. For a whole deck authored from source documents (PDF, DOCX, a topic),
+hand off to **ppt-master** ([hugohe3/ppt-master](https://github.com/hugohe3/ppt-master),
+`npx skills add hugohe3/ppt-master`) if it is installed; it can take the MFEC
+template or a deck this skill produced as its starting `.pptx`. Do not vendor
+it here: its integrity gate refuses to run from altered files.
 
 ## Preflight — run this before you write anything
 
@@ -28,18 +35,32 @@ run** — extrapolating from the documented grammar has produced wrong defaults
 before. If you cannot run it, mark every claim UNVERIFIED and stop before
 editing this file.
 
+`$SKILL` below is the directory holding this file — the base directory the
+skill loader reports, or wherever it was installed (`~/.claude/skills/…`,
+`.agents/skills/…`). Everything bundled lives in `$SKILL/assets/`.
+
 ```bash
-cp ~/.claude/skills/mfec-pptx-diagram/assets/MFEC_PowerPoint_Template.pptx deck.pptx
+cp $SKILL/assets/MFEC_PowerPoint_Template.pptx deck.pptx
 officecli add deck.pptx / --type slide --prop layout="Title and Content" --prop title="Architecture"
 officecli add deck.pptx '/slide[6]' --type diagram --prop render=native \
   --prop x=2cm --prop y=5cm --prop width=29.9cm --prop height=12.5cm \
   --prop mermaid="flowchart TD; A[Producer] --> B[(Topic)]; B --> C[Consumer]"
 ```
 
-Copy the template from wherever this skill is installed — the path above is
-the usual one; `assets/MFEC_PowerPoint_Template.pptx` beside this file is
-the source of truth. Reach for `officecli create` only when the user asks
-for an unbranded deck.
+Reach for `officecli create` only when the user asks for an unbranded deck.
+
+## officecli gotchas that cost a round-trip
+
+Each of these was found the hard way; check here before experimenting.
+
+| Doing | Reality |
+|---|---|
+| Addressing a table cell | `/slide[N]/table[@id=M]/tr[R]/tc[C]` — **not** `table-row`/`table-cell`, despite `officecli help pptx` listing those element names. |
+| Animating a diagram node | Refused: animations attach only to a *top-level* `shape`/`chart`. Nodes live inside the diagram group. Put a top-level marker shape on top and animate that — `flow-motion.py` does exactly this. |
+| `officecli get ... --json` on a group | Comes back `{}`. Use the plain text form and parse it. |
+| `query --fields x,y,width,height` on a `group` | Returns empty fields. Group geometry only comes from `officecli get <path>`. |
+| A slide added with `--type slide` | Defaults to the **Title Slide** layout (the cover). Always pass `--prop layout="Title and Content"` for a content slide. |
+| Comparing group children to slide coordinates | Children sit in the group's `childOffset` space — comparing them against the slide box gives a false positive on every template slide. |
 
 ## Pick the render mode — this is the only real decision
 
@@ -92,7 +113,7 @@ rest. If a font or colour looks wrong, the wrong layout was cloned.
 A slide you append lands at `/slide[6]`, not `/slide[1]` — run
 `officecli get deck.pptx / --depth 1` before addressing any path.
 
-### Copy slide 2 — it already has a diagram box
+### Clone slide 2 — it already has a diagram box
 
 `--from` clones a whole branded slide, decorations and all. Shape ids are
 renumbered on copy, so read them back rather than reusing the ones below:
@@ -109,8 +130,9 @@ officecli add deck.pptx '/slide[6]' --type diagram --prop render=native \
 
 That box is exactly where the placeholder sat — right of the bullet column.
 
-For a diagram-only slide, add a fresh one and **name the layout**: the
-default is `Title Slide`, which is the cover layout, not a content one.
+### Add a diagram-only slide — name the layout
+
+The default layout is `Title Slide`, the cover, not a content one.
 
 ```bash
 officecli add deck.pptx / --type slide --prop layout="Title and Content" --prop title="Architecture"
@@ -150,8 +172,10 @@ samples use) which defines no such slot — officecli writes an explicit
 bottom-right position from the master. Number the whole deck or none of it;
 half-numbered is worse than unnumbered.
 
-Finally delete every sample slide the content doesn't need, **highest index
-first** so the paths ahead don't shift:
+### Delete the unused samples
+
+Delete every sample slide the content doesn't need, **highest index first**
+so the paths ahead don't shift:
 
 ```bash
 officecli remove deck.pptx '/slide[5]'
@@ -170,9 +194,9 @@ leave it off for MFEC decks.
 **The box is not clamped.** Give `x+width > 33.87cm` or `y+height > 19.05cm`
 and officecli places the group off the slide edge — nodes and labels are
 simply cut off, and `officecli view issues` stays silent about it. Keep every
-box inside `x+width ≤ 32cm` and `y+height ≤ 17.5cm` (leaving the title band
-clear of the title band), and re-check the group's real geometry after the add — a
-wide flowchart grows to fill the width you gave it.
+box inside `x+width ≤ 32cm` and `y+height ≤ 17.5cm`, and re-check the
+group's real geometry after the add — a wide flowchart grows to fill the
+width you gave it.
 
 Add returns one group path, e.g. `/slide[1]/group[1]`. The whole diagram
 stays adjustable as a unit:
@@ -195,14 +219,13 @@ legend, or all three. Ask for an example or a one-line description of the
 look, or show the smallest possible sample slide first. Building and
 documenting a guessed style has had to be thrown away.
 
-
 A diagram is always making a point, so the picture has to carry three things a
 bare flowchart doesn't: **what kind of thing each box is** (fill colour), **what
 the colours mean** (a legend), and **why a particular box is there** (an unboxed
 caption above it). One helper does all three:
 
 ```bash
-python3 ~/.claude/skills/mfec-pptx-diagram/assets/annotate.py deck.pptx '/slide[6]' \
+python3 $SKILL/assets/annotate.py deck.pptx '/slide[6]' \
   --role 'Stream=#C6F0C2:main stream,out_l,out_r,topic joined' \
   --role 'Table=#AED9F5:main tbl,info tbl' \
   --note 'main stream=(ตัว trigger ของ out_l)' \
@@ -285,7 +308,6 @@ wider box scales everything up together and the label overlaps by the same
 fraction. If neither fix is available, drop the label and put the text in a
 caption or the bullet column beside the diagram.
 
-
 ## Make the flow readable — motion, steps, and the slides around it
 
 A static box-and-arrow picture asks the audience to work out the direction for
@@ -299,7 +321,7 @@ rejected outright. So the moving thing has to be a separate top-level shape
 riding over the diagram. The bundled helper does that:
 
 ```bash
-python3 ~/.claude/skills/mfec-pptx-diagram/assets/flow-motion.py \
+python3 $SKILL/assets/flow-motion.py \
   deck.pptx '/slide[6]' Producer Kafka Consumer
 # → /slide[6]/shape[@id=100001]: 2 hop(s) Producer -> Kafka -> Consumer
 ```
@@ -378,15 +400,15 @@ comparison table is worse than one without it.
 
 ## Verify before claiming it worked
 
-Four checks, all of them, every time — they catch different failures and none
-of them subsumes the others. In particular `officecli view issues` reporting
+All of these, every time — they catch different failures and none of them
+subsumes the others. In particular `officecli view issues` reporting
 zero does **not** mean the text fits; see the `autoFit=shape` trap below.
 
 ```bash
 officecli get deck.pptx '/slide[6]' --depth 1     # shapes + connectors present?
 officecli query deck.pptx ':contains("[")'        # leftover placeholders — must be empty
 officecli view deck.pptx issues                   # text overflowing its own shape
-python3 ~/.claude/skills/mfec-pptx-diagram/assets/check-layout.py deck.pptx   # off-slide, overlap, in-diagram collision, overfull
+python3 $SKILL/assets/check-layout.py deck.pptx   # off-slide, overlap, in-diagram collision, overfull
 officecli validate deck.pptx                      # after any animation work
 ```
 
@@ -498,19 +520,6 @@ image — the only way to see a node label spilling past its own node outline.
 Needs a headless browser; without one, both this and `render=image` are
 unavailable and `render=auto` falls to native. Say so rather than implying you
 looked at the slide.
-
-## officecli gotchas that cost a round-trip
-
-Each of these was found the hard way; check here before experimenting.
-
-| Doing | Reality |
-|---|---|
-| Addressing a table cell | `/slide[N]/table[@id=M]/tr[R]/tc[C]` — **not** `table-row`/`table-cell`, despite `officecli help pptx` listing those element names. |
-| Animating a diagram node | Refused: animations attach only to a *top-level* `shape`/`chart`. Nodes live inside the diagram group. Put a top-level marker shape on top and animate that — `flow-motion.py` does exactly this. |
-| `officecli get ... --json` on a group | Comes back `{}`. Use the plain text form and parse it. |
-| `query --fields x,y,width,height` on a `group` | Returns empty fields. Group geometry only comes from `officecli get <path>`. |
-| A slide added with `--type slide` | Defaults to the **Title Slide** layout (the cover). Always pass `--prop layout="Title and Content"` for a content slide. |
-| Comparing group children to slide coordinates | Children sit in the group's `childOffset` space — comparing them against the slide box gives a false positive on every template slide. |
 
 ## Shell gotchas
 
