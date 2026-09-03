@@ -1,6 +1,6 @@
 ---
 name: confluent-kafka-developer
-description: Kafka/Confluent developer skill for design, implementation, and review of application work — producers, consumers, Kafka Streams, Kafka Connect, ksqlDB, and Flink. Designs event/topic/schema models, writes and reviews client code and connector/ksqlDB/Flink SQL config, explains Kafka concepts, and draws architecture and data-flow diagrams. Answers only from official documentation (docs.confluent.io, developer.confluent.io, kafka.apache.org, Apache Flink docs) — never from community sources such as forums, Stack Overflow, or blog posts. Use when explaining a Kafka concept, designing an event-driven system, drawing a Kafka/Streams diagram, planning or writing producer/consumer/Streams/Connect/ksqlDB/Flink code and config, or reviewing any of it.
+description: Kafka/Confluent application developer — producers, consumers, Kafka Streams, Connect, ksqlDB, and Flink; event/topic/schema design, client code and connector/SQL config, concept explanations, and data-flow diagrams. Official docs only. Use when explaining a Kafka concept, designing an event-driven system, drawing a Kafka/Streams diagram, or planning, writing, or reviewing producer/consumer/Streams/Connect/ksqlDB/Flink code and config.
 ---
 
 # Confluent / Kafka Developer
@@ -199,7 +199,9 @@ disconnect. Verify current support (Table API, UDFs, connectors to
 non-Kafka systems, private networking) against the docs rather than
 assuming parity with open-source Flink.
 
-### Pitfalls specific to these
+## Pitfalls to check for
+
+Stream processing and Connect:
 
 - ksqlDB: pull query against a plain `CREATE TABLE` table fails — only
   tables materialized via `CREATE TABLE AS SELECT` support pull queries.
@@ -224,7 +226,7 @@ assuming parity with open-source Flink.
 - Connect: assuming a connector supports exactly-once without checking —
   it's connector-specific (verify against that connector's docs).
 
-## Common pitfalls to check for
+Clients and Streams:
 
 - Missing `acks=all` + `min.insync.replicas` for durability, or missing
   `enable.idempotence` where exactly-once producer semantics are needed.
@@ -254,7 +256,8 @@ assuming parity with open-source Flink.
 - **Implement**: the code/config, the check that proves it runs, and any
   setting deliberately left at its default called out — silence about a
   durability or ordering config reads as a decision nobody made.
-- **Review**: findings framed as root cause + fix location, not just
-  symptoms — same discipline as `autopilot`'s review phase.
+- **Review**: findings framed as root cause + fix location, each confirmed
+  by a direct check (the config as written, the doc's current default) —
+  an unverified finding sends someone changing production for nothing.
 - **Explanations**: cite the specific doc section retrieved, and flag
   version-dependent behavior.

@@ -1,7 +1,7 @@
 ---
 name: explain-repo
 argument-hint: "[repo path or subdirectory]"
-description: Explain what an unfamiliar codebase actually does, in language a human can follow — a plain-English summary, one diagram, the external services it talks to that don't live in the repo, and an explicit list of everything that couldn't be determined. Reads the code via CodeGraph rather than guessing. Use when the user says "/explain-repo", "what does this repo do", "explain this codebase", "onboard me to this project", "I inherited this, help", "what am I looking at", or asks for an overview/architecture summary of a repo they didn't write. Read-only — it never changes code.
+description: Explain what an unfamiliar codebase actually does — a plain-English summary, one diagram, the external services it depends on, and an explicit list of what couldn't be determined — tracing real call paths via CodeGraph rather than guessing. Read-only. Use when the user says "/explain-repo", "what does this repo do", "onboard me to this project", or wants an architecture overview of a repo they didn't write.
 ---
 
 # Wait, what does this repo do?
@@ -24,14 +24,16 @@ services at once covers nothing.
 
 ## Phase 1 — index it
 
-Call `codegraph_status` (pass `projectPath` for anything outside cwd).
+Run `codegraph status <path>`. The MCP tools (`codegraph_explore`,
+`codegraph_node`) only exist in a session that started inside an indexed
+repo, so the shell CLI is the reliable route; it prints the same output.
 
-No `.codegraph/`? Ask once: *"No CodeGraph index here — want me to run
+Not initialized? Ask once: *"No CodeGraph index here — want me to run
 `codegraph init -i`? It builds a symbol graph so I can trace calls instead of
-grepping."* On yes, run it and wait. On no, or if the tool isn't installed,
-fall back to Glob/Read of entrypoints and manifests — and say so in the report:
-*"No symbol graph; this map is from entrypoints and config, so call paths are
-shallower than usual."*
+grepping."* On yes, run it and wait. On no, or if `codegraph` isn't
+installed, fall back to Glob/Read of entrypoints and manifests — and say so in
+the report: *"No symbol graph; this map is from entrypoints and config, so
+call paths are shallower than usual."*
 
 ## Phase 2 — read the outside first
 
@@ -47,11 +49,11 @@ source. READMEs rot.
 
 ## Phase 3 — trace one real path
 
-`codegraph_explore`, seeded with the entrypoint symbols from Phase 2. Follow
-exactly one path end to end — the main request, the main job, the main command
-— from entry to the point where data lands somewhere. One traced path teaches
-more than ten summarized modules. Use `codegraph_callers`/`codegraph_callees`
-to resolve a specific fork, `codegraph_node` for a signature you need verbatim.
+`codegraph explore <entrypoint symbols>`, seeded from Phase 2. Follow exactly
+one path end to end — the main request, the main job, the main command — from
+entry to the point where data lands somewhere. One traced path teaches more
+than ten summarized modules. `codegraph callers`/`callees <symbol>` resolves a
+specific fork, `codegraph node <symbol>` gives a signature verbatim.
 
 Trust what CodeGraph returns; don't re-verify it with grep.
 

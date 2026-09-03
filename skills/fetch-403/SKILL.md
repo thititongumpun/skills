@@ -1,7 +1,7 @@
 ---
 name: fetch-403
 argument-hint: "[url that was refused]"
-description: Recover a web page after the built-in fetcher (WebFetch) is refused — 403 Forbidden, empty body, or a "Just a moment…" bot-check interstitial instead of content. Use when a documentation page, blog post, or reference URL won't load through the normal fetch tool and the content is still needed. Covers the curl fallback, machine-readable endpoints, and the rule against silently answering from memory when a source stays blocked.
+description: Recover a web page after the built-in fetcher (WebFetch) is refused — 403 Forbidden, empty body, or a "Just a moment…" bot-check interstitial instead of content. Use whenever a URL won't load through the normal fetch tool and its content is still needed.
 ---
 
 # Fetching a page that returned 403

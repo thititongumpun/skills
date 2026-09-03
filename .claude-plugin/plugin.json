@@ -1,25 +1,34 @@
 {
   "name": "skills",
   "version": "0.1.0",
-  "description": "Personal Claude Code skills — self-orchestrated task execution, Kafka/Confluent admin and dev, and more.",
+  "description": "Personal Claude Code skills \u2014 self-orchestrated task execution, Kafka/Confluent admin and dev, and more.",
   "author": {
     "name": "thititongumpun"
   },
   "repository": "https://github.com/thititongumpun/skills",
   "license": "MIT",
-  "keywords": ["engineering", "skills", "orchestration", "kafka", "confluent"],
+  "keywords": [
+    "engineering",
+    "skills",
+    "orchestration",
+    "kafka",
+    "confluent"
+  ],
   "skills": [
     "./skills/autopilot",
     "./skills/confluent-kafka-admin",
     "./skills/confluent-kafka-developer",
     "./skills/explain-repo",
     "./skills/fetch-403",
+    "./skills/mfec-kafka-connect",
     "./skills/mfec-pptx-diagram",
     "./skills/skills-doctor",
     "./skills/sync-skill-installs",
     "./skills/whiteboard",
     "./skills/yolo"
   ],
-  "commands": ["./commands/skills-doctor.md"],
+  "commands": [
+    "./commands/skills-doctor.md"
+  ],
   "hooks": "./hooks/hooks.json"
 }

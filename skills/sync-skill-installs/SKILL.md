@@ -20,9 +20,9 @@ cd "$(git rev-parse --show-toplevel)"
 find skills -name __pycache__ -type d -prune -exec rm -rf {} +
 
 # 2. source -> global, source -> project (only the ones already installed there)
-for s in skills/*/; do n=$(basename "$s"); rsync -a --delete \
+for s in skills/*/; do n=$(basename "$s"); rsync -a --delete --delete-excluded \
   --exclude='__pycache__' "$s" ~/.agents/skills/"$n"/; done
-for d in .agents/skills/*/; do n=$(basename "$d"); [ -d "skills/$n" ] && rsync -a --delete \
+for d in .agents/skills/*/; do n=$(basename "$d"); [ -d "skills/$n" ] && rsync -a --delete --delete-excluded \
   --exclude='__pycache__' "skills/$n/" "$d"; done
 
 # 3. lock hashes follow the files
@@ -37,9 +37,9 @@ for name, meta in d["skills"].items():
 lock.write_text(json.dumps(d, indent=2) + "\n")
 PY
 
-# 4. prove it
-for s in skills/*/; do n=$(basename "$s"); diff -rq "$s" ~/.agents/skills/"$n" \
-  || echo "DRIFT: $n"; done
+# 4. prove it — both installs
+for s in skills/*/; do n=$(basename "$s"); for dst in ~/.agents/skills/"$n" .agents/skills/"$n"; do
+  [ -d "$dst" ] && { diff -rq "$s" "$dst" >/dev/null || echo "DRIFT: $dst"; }; done; done
 ```
 
 Then report which skills changed. `.agents/` and `skills-lock.json` are

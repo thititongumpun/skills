@@ -6,8 +6,11 @@ description: Fully self-driven task execution — Opus/Fable plans the work into
 
 # Autopilot
 
-You are an ORCHESTRATOR. Do not do the work yourself — deploy subagents for
-planning, execution, and review, and coordinate between them.
+You are an ORCHESTRATOR: deploy subagents for planning, execution, and
+review, and coordinate between them. If you are about to edit a file
+yourself, you have drifted — dispatch it instead. "This task is small, I'll
+just do it" is the one failure that actually happens, and a change you made
+by hand gets no execution report and no cold review.
 
 Default planner/reviewer model is `opus`. Use `fable` instead only if the
 user asked for it. Default fix-loop cap is 2 rounds unless the user says
@@ -80,13 +83,8 @@ the task list also lives on disk at `.claude/autopilot-tasks.md`.
 **Executing:** 4. Add DLQ handling [opus] — phase 2, 3/8 done
 
 - [x] 1. Define Avro schema + compatibility mode   [sonnet]
-- [x] 2. Add idempotent producer config            [sonnet]
-- [x] 3. Wire Schema Registry client               [sonnet]
 - [ ] 4. Add DLQ handling                          [opus]   (complex)
-- [ ] 5. Streams topology tests                    [sonnet]
-- [ ] 6. Bump connector version                    [haiku]  (simple)
-- [ ] 7. Update docs                               [haiku]  (simple)
-- [ ] 8. Review                                    [opus]
+…the same rows as the checklist above, as checkboxes.
 ```
 
 Rewrite the file yourself — don't delegate it to a subagent, and don't let a
@@ -190,7 +188,8 @@ For each planned task, deploy one Agent call:
   don't inherit them from this file.
 - Subagents don't spawn subagents. A subagent that hits ambiguity or can't
   meet its pass condition stops and reports back — it doesn't improvise a
-  different task than the one it was given.
+  different task than the one it was given. Its dependents are then
+  blocked: report them as blocked rather than dispatching them anyway.
 - `model`: set `model: "sonnet"` for normal tasks — the middle tier is
   explicit, not inherited. Set `model: "opus"` (or `"fable"`, matching
   Phase 1) only for tasks flagged `complex: true`, and `model: "haiku"`
@@ -292,26 +291,3 @@ three:
   items survive the message.
 - Close with one line of counts: tasks completed, fix rounds used, whether
   the final review came back clean. One line, not a fourth section.
-
-## Failure modes to avoid
-
-- **The one that actually happens: you do the work yourself.** Being told
-  not to isn't enough — an orchestrator holding Edit/Write drifts into
-  "this task is small, I'll just do it," and then no subagent report and
-  no cold review ever covers that change. If you're about to edit a file,
-  you've drifted; dispatch it instead.
-- Don't skip the review step, even for "simple" requests.
-- Don't keep looping fixes past the round cap.
-- Don't escalate every task to Opus/Fable — only ones actually flagged
-  complex in Phase 1.
-- Don't downgrade to Haiku to save tokens on a task that only *looks*
-  mechanical. The cost of a wrong tier is a whole failed task plus a retry;
-  the cost of leaving `simple` off is a few tokens. Unmarked is the default.
-- A failed or empty-handed task agent blocks its dependents — report them
-  as blocked, don't dispatch them anyway just to keep the loop moving.
-- Don't let a subagent gold-plate. An executor that adds an interface, a
-  config knob, or a helper layer nobody asked for has handed you extra
-  work to review and the user extra code to maintain.
-- Don't hand back a technical dump. The Phase 5 summary is for the person
-  who walked away, not a replay of the run — no phase numbers, no model
-  names, no subagent reports pasted through.

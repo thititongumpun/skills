@@ -1,7 +1,7 @@
 ---
 name: yolo
 argument-hint: "<task to run unattended>"
-description: You Only Live Once — unattended task execution meant to run while you're eating or sleeping. Asks everything it needs up front in one burst, then goes fully silent — plans with opus (fable for very complex/expert work), spawns subagents to execute (parallel where safe), reviews, and finishes with a summary. Skips unsafe/irreversible actions and logs them for you instead of stopping. Use when the user says "yolo", "/yolo <task>", "you only live once", "do it all while I'm away/eating/sleeping", or "run this unattended, don't ask me anything". Needs a subagent runtime — Claude Code only.
+description: You Only Live Once — unattended task execution while the user is away. Asks everything up front in one burst, then goes fully silent — plans, executes via subagents, reviews, and finishes with a summary; unsafe or irreversible actions are skipped and logged instead of blocking. Use when the user says "yolo", "/yolo <task>", "do it all while I'm away/eating/sleeping", or "run this unattended, don't ask me anything". Claude Code only.
 ---
 
 # yolo — You Only Live Once
@@ -31,7 +31,8 @@ multi-select where it fits). Ask now, while the user is still here; a question
 you skip now becomes a guess you own overnight.
 
 Once this burst is answered, yolo is **fully silent**. Phases 1–5 never call
-`AskUserQuestion` again. Any ambiguity that surfaces later is resolved by your
+`AskUserQuestion` again and never wait on anything human; at the fix-loop
+round cap, stop and put what's left in the summary. Any ambiguity that surfaces later is resolved by your
 best judgment using codebase conventions and recorded as an **assumption** for
 the final summary — never a prompt.
 
@@ -128,11 +129,3 @@ under **What I assumed** naming the ceiling and upgrade path (Override 4's
 example shows the shape). The guardrail still holds — validation, data-loss
 error handling, security, accessibility, anything explicitly requested — no
 human is awake to catch a shortcut that ate a safety check.
-
-## Don't stall
-
-Unattended means no waiting on human input and no infinite loops. Respect the
-fix-loop round cap; at the cap, stop and put remaining findings in the summary
-rather than looping forever. Report progress via `TodoWrite` when available,
-else reprint the checklist on state changes — counts and phase, never time
-estimates.

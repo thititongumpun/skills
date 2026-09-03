@@ -1,7 +1,7 @@
 ---
 name: whiteboard
 argument-hint: "<requirements> | explain <repo|PR|task>"
-description: Turn requirements or existing work into a diagram you can grab and rearrange. Two modes — design mode draws a proposed flow onto a live Excalidraw canvas you can edit by hand, reads your edits back, and compares solutions with pros/cons when more than one fits; explain mode reads work that already exists and publishes a shareable page so other people understand it. Never implements anything. Use when the user says "whiteboard this", "/whiteboard <requirements>", "draw this out", "diagram these requirements", "show me the flow", or "visualize this before we build it" — and for explain mode, "/whiteboard explain <repo/PR/task>", "explain what I'm working on", "document this for the team", "make a diagram to show other people", or "help them understand what I built". Needs Node, a browser, and the excalidraw MCP server for the live canvas; explain mode also needs the Artifact tool to publish.
+description: Turn requirements or existing work into a diagram on a live Excalidraw canvas the user can grab and rearrange. Design mode draws a proposed flow, reads the user's edits back, and compares solutions when the requirements fork; explain mode diagrams work that already exists and publishes a shareable page for other people. Never implements. Use when the user says "whiteboard this", "/whiteboard <requirements>", "draw this out before we build it", or for explain mode "/whiteboard explain <repo/PR/task>", "make a diagram to show other people what I built".
 ---
 
 # Whiteboard
@@ -121,13 +121,9 @@ claude mcp add excalidraw --scope user \
   -e EXCALIDRAW_NO_AUTOSTART=1 -- npx -y mcp-excalidraw-server
 ```
 
-**`EXCALIDRAW_NO_AUTOSTART=1` is not optional.** Without it, the MCP server
-spawns the canvas the moment the agent connects — meaning an unauthenticated
-listener on port 3000 at *every* session start, whether or not anyone is
-drawing. That silently defeats the whole start-on-use lifecycle below.
-Verified: registering without it left :3000 serving 200 immediately.
-
-Start the canvas explicitly instead, which overrides the guard:
+**`EXCALIDRAW_NO_AUTOSTART=1` is not optional** — without it the canvas
+comes up at every session start (see the security section below). Start it
+explicitly instead, which overrides the guard:
 
 ```bash
 npx -y mcp-excalidraw-server start
@@ -344,11 +340,9 @@ page has to show what they ended up with. Call `export_to_image` with
 `format: "svg"` and **no** `filePath` — that returns the SVG source inline,
 which drops straight into the page.
 
-Two traps here. `format: "png"` without a `filePath` does *not* return an
-image; it returns the literal string `Base64 png data (N chars). Use
-filePath to save to disk.`, which is useless to embed. And the export needs
-an open browser tab like everything else on this canvas — if the user
-already closed it, ask them to reopen before you publish.
+The Phase 6 traps apply unchanged: the browser tab must still be open, and
+only SVG returns inline source — PNG without a `filePath` returns a
+placeholder string.
 
 Then give the user the URL and **say plainly that publishing put the content
 on claude.ai**. It starts private, but it has left the machine, and work
@@ -397,67 +391,6 @@ one node without regenerating the diagram and destroying their layout.
 If a call fails with exit code 4, no browser tab is open. Ask them to open
 `http://127.0.0.1:3000`; don't retry blindly.
 
-## Failure modes to avoid
-
-- **Drawing before you understand.** A confident diagram of the wrong
-  requirement is the one failure the user can't catch, because it looks
-  exactly like you understood.
-- **Converting mermaid onto a canvas they've edited.** This is the one that
-  destroys work. `create_from_mermaid` replaces the whole scene. Snapshot
-  first, and don't reconvert once they've started.
-- **Writing to the canvas while they're editing.** The frontend syncs the
-  entire scene, so your element vanishes and you won't be told. Wait until
-  they say they're done.
-- **Assuming a tab is open.** Nothing opens the browser for them. Mermaid
-  conversion, SVG export, and screenshots all need one; exit code 4 is the
-  canvas saying so. Ask, don't retry.
-- **Forgetting to export before stopping.** The scene is in memory. Stop the
-  server without `export_scene` and their rearrangement is simply gone.
-- **Stopping the canvas before the image exports.** PNG and SVG render in
-  the browser tab. Ask what they want, export it, *then* shut down — in that
-  order, or you're restarting the server to fix your own mistake.
-- **Asking whether to save the `.excalidraw`.** Always write it. The prompt
-  is about what *else* they want, never about whether to keep their work.
-- **Reporting an edit you didn't verify.** If `describe_scene` shows the
-  same layout you drew, say nothing moved. Inventing "I see you moved X" is
-  worse than the read-only canvas this replaced.
-- **Handing over a diagram you never looked at.** `describe_scene` returning
-  52 elements is not evidence anyone can read them. Screenshot it and look.
-  Clipped labels don't show up in the geometry.
-- **Long labels and subgraphs.** The two reliable ways to produce an
-  unreadable canvas. See the rules above — both are renderer limits, not
-  style preferences.
-- **Trusting `snapshot_scene` as a backup.** Snapshots are in the same
-  memory as the scene; whatever kills the canvas kills them too. Only an
-  exported file is a backup.
-- **A duplicate canvas on 3000** (upstream #75) — the agent and the human
-  end up on different servers and neither sees the other. If `describe_scene`
-  disagrees with what they say is on screen, suspect this first.
-- **Manufacturing alternatives.** Two solutions because the problem has
-  two, never because a comparison looks more thorough than an answer.
-- **Comparing without recommending.** Lay out the trade-offs, then say
-  which one you'd ship and why. "It depends on your priorities" is the
-  answer you were asked to replace.
-- **Advancing on an unconfirmed diagram.** Loop on Phase 4 until it's
-  right. Everything downstream inherits the error.
-- **Sliding into implementation.** Hard stop at the confirmed design, in
-  both directions — no code, and no "shall I build it now?" nudge.
-
-Explain mode adds four of its own:
-
-- **Diagramming a repo you didn't read.** A plausible architecture drawn
-  from the directory names is the worst thing this skill can produce: the
-  user skims it, it looks right, and it goes to people who cannot check it.
-  Read the code, trace one real path, name real files.
-- **Handing over a localhost URL.** It resolves to nothing on their machine,
-  and the scene dies with the process anyway. The canvas is for agreeing;
-  the artifact is for sending.
-- **Publishing your mermaid after they edited the canvas.** The page would
-  show the diagram you drew, not the one they corrected — a stale picture
-  presented as the agreed one. Export the SVG.
-- **One diagram for every audience.** Pick an altitude and hold it. A
-  picture that tries to serve a stakeholder and a maintainer at once serves
-  neither.
-- **Publishing without saying so.** The artifact starts private, but the
-  content still left the machine. Say it in one sentence and let the user
-  decide — their employer's code is not yours to upload quietly.
+If `describe_scene` disagrees with what the user says is on screen, suspect a
+duplicate canvas on :3000 (upstream #75) — the agent and the human are on
+different servers. Stop both, start one, and have them reload.
