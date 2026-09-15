@@ -32,38 +32,10 @@ per skill, so you get "mfec-pptx-diagram is dead" rather than "officecli missing
 and prints the exact install command for each gap. `--fix` offers to run the
 safe ones. It never installs anything on its own.
 
-### Needed for whiteboard's canvas: the excalidraw MCP
-
-`whiteboard` draws onto a live [Excalidraw](https://excalidraw.com) canvas
-you can edit by hand — drag a box, reroute an arrow — and then reads your
-edits back:
-
-```
-claude mcp add excalidraw --scope user \
-  -e EXCALIDRAW_NO_AUTOSTART=1 -- npx -y mcp-excalidraw-server
-```
-
-Keep the `EXCALIDRAW_NO_AUTOSTART=1` — without it the canvas spawns whenever
-the agent connects, so port 3000 is listening at every session start whether
-or not you're drawing. With it, the skill starts the canvas only when you
-actually whiteboard something, and stops it when done.
-
-Installed as a Claude Code plugin, a `SessionEnd` hook also stops the canvas
-if a session ends before the skill got to shut it down. It costs ~6ms when
-nothing is running. Via `npx skills add` there's no hook, so a killed session
-can leave the canvas up — `npx -y mcp-excalidraw-server stop` clears it.
-
-Without it the skill still works, it just can't draw an adjustable canvas: it
-degrades to an **archify** HTML diagram (or a mermaid fence) and says so. Needs `node` on `PATH` and a
-browser on the same machine — **you open `http://127.0.0.1:3000` yourself**,
-nothing opens it for you. Explain mode additionally publishes a shareable
-page, which needs the Artifact tool.
-
-⚠️ The canvas server has **no authentication and wildcard CORS**
-([#39](https://github.com/yctimlin/mcp_excalidraw/issues/39), and the fix in
-[#74](https://github.com/yctimlin/mcp_excalidraw/pull/74) is unmerged). While
-it runs, any page you visit can read or wipe your canvas. The skill therefore
-starts it on use and stops it when done — don't leave it running.
+Installed as a plugin, a `SessionStart` hook runs `doctor.sh --skills` on
+every startup/resume: silent when the third-party skills this repo routes to
+(archify, ppt-master, superpowers) are present, an error naming each missing
+one and its install line when not.
 
 ### Needed for explain-repo: codegraph
 
@@ -140,10 +112,7 @@ Caveats: discovery is manual (the agent loads a skill because `AGENTS.md` says
 to, not by matching descriptions), and both `/plugin install` lines above are
 Claude Code syntax — elsewhere you'd wire up the context7 MCP server yourself.
 **Claude Code only**: `autopilot` and `yolo` (they need subagents and a todo
-tool), and `whiteboard`'s shareable page (it needs the Artifact tool).
-Whiteboard's canvas is an MCP server, so it works in any MCP-capable agent;
-its thinking works anywhere — you just get an archify HTML diagram instead of
-the live picture.
+tool).
 
 ## Skills
 
@@ -156,11 +125,6 @@ the live picture.
   RBAC/ACLs, networking, scaling, DR, cost.
 - **confluent-kafka-developer** — Kafka/Confluent *application* work:
   producers/consumers, Streams, Connect, ksqlDB, Flink.
-- **whiteboard** — requirements → a diagram you can drag around on a live
-  Excalidraw canvas, with your edits read back to you. Plus pros/cons and a
-  pick when more than one design fits. Or `/whiteboard explain <repo|PR|task>`
-  to diagram work that already exists and publish a shareable page for your
-  team. Never implements. Needs the excalidraw MCP (see above).
 - **fetch-403** — recover a page the fetcher was refused, without quietly
   falling back to memory.
 - **mfec-kafka-connect** — the change loop for a Kafka Connect connector in an

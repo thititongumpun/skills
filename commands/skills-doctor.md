@@ -14,8 +14,6 @@ list. Check yours and report per skill:
   without them neither skill runs at all.
 - `TodoWrite` → autopilot, yolo. Soft — they fall back to reprinting the
   checklist.
-- `Artifact` plus the `artifact-design` skill → whiteboard's explain mode.
-  Hard for that mode only; design mode is unaffected.
 - `WebFetch` / `WebSearch` → fetch-403 and both confluent-kafka skills. Their
   retrieval-first rule doesn't hold without these, and answering from memory
   instead is the exact failure those skills exist to prevent.

@@ -9,6 +9,7 @@ description: Check which skills in this repo actually work on this machine — r
 ```bash
 scripts/doctor.sh              # report
 scripts/doctor.sh --fix        # offer to run the safe installs, one y/N each
+scripts/doctor.sh --skills     # hook mode: only missing third-party skills; quiet when none, exit 2 when some
 ```
 
 Exits `1` when a hard dependency is missing and some skill is therefore dead,

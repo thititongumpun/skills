@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Which skills in this repo actually work on this machine, and what's missing.
-# Usage: doctor.sh [--fix] [--selftest]
+# Usage: doctor.sh [--fix] [--skills] [--selftest]
+#   --skills  only the third-party skills this repo's skills route to; silent
+#             when all present, exit 2 with the install lines when not (hook mode)
 set -uo pipefail
 
 PLUGINS="$HOME/.claude/plugins/installed_plugins.json"
@@ -16,20 +18,18 @@ esac
 # ponytail: read -d '' not DEPS=$(cat <<EOF) — bash 3.2 mis-parses apostrophes
 # inside a heredoc nested in $( ). Returns 1 at EOF, hence the || true.
 IFS= read -r -d '' DEPS <<'EOF' || true
-node|hard|whiteboard|canvas server won't start
 curl|hard|fetch-403|rung 1 can't run at all
 officecli|hard|mfec-pptx-diagram|entire skill is dead, zero fallback
 python3|soft|mfec-pptx-diagram|no layout gate or flow animation; the diagram still lands
 markdown|soft|fetch-403|pages come back as raw HTML instead of markdown
 gh|soft|fetch-403|no GitHub-API rung for private repo URLs
-browser|soft|whiteboard|the canvas needs an open tab to convert or export
 headless|soft|mfec-pptx-diagram|no render=image and no screenshot check; render=auto falls back to native
-excalidraw|soft|whiteboard|no adjustable canvas; degrades to a mermaid fence
 superpowers|soft|autopilot|its planner/reviewer can't invoke brainstorming or systematic-debugging
 context7|soft|kafka admin+developer, autopilot, yolo, fetch-403, mfec-pptx-diagram|version-pinned library docs; falls back to fetching pages
 confluent|soft|confluent-kafka-admin, confluent-kafka-developer|emitted CLI commands go unverified
 terraform|soft|confluent-kafka-admin|can't fmt/validate the TF it writes
-archify|soft|explain-repo, whiteboard|no HTML/SVG picture; both degrade to a mermaid fence
+ppt-master|soft|mfec-pptx-diagram|whole-deck work has nowhere to route; the diagram slide still lands
+archify|soft|explain-repo|no HTML/SVG picture; degrades to a mermaid fence
 codegraph|soft|explain-repo|no symbol graph; falls back to reading entrypoints, shallower map
 rtk|soft|autopilot, yolo|shell calls aren't token-optimized
 EOF
@@ -37,9 +37,6 @@ EOF
 have() {
   case "$1" in
     markdown)    python3 -c 'import html2text' 2>/dev/null || command -v uvx >/dev/null 2>&1 ;;
-    browser)     for b in xdg-open wslview open explorer.exe; do
-                   command -v "$b" >/dev/null 2>&1 && return 0
-                 done; return 1 ;;
     # An opener is not a renderer: on WSL explorer.exe passes `browser` while
     # officecli still has nothing to rasterize with. Check for a real binary.
     headless)    for b in google-chrome google-chrome-stable chromium \
@@ -47,12 +44,10 @@ have() {
                    command -v "$b" >/dev/null 2>&1 && return 0
                  done
                  python3 -c 'import playwright' 2>/dev/null ;;
-    # ponytail: presence check only — a registered-but-broken server reads as
-    # present. Fine for an advisory row; upgrade to a real parse if it misleads.
-    excalidraw)  grep -qs 'mcp-excalidraw-server' "$HOME/.claude.json" .mcp.json 2>/dev/null ;;
     superpowers) grep -qs '"superpowers@' "$PLUGINS" ;;
-    archify)     [ -f "$HOME/.claude/skills/archify/SKILL.md" ] ||
-                 [ -f "$HOME/.agents/skills/archify/SKILL.md" ] ;;
+    archify|ppt-master)
+                 [ -f "$HOME/.claude/skills/$1/SKILL.md" ] ||
+                 [ -f "$HOME/.agents/skills/$1/SKILL.md" ] ;;
     codegraph)   command -v codegraph >/dev/null 2>&1 ||
                  grep -qs 'codegraph' "$HOME/.claude.json" .mcp.json 2>/dev/null ;;
     context7)    grep -qs 'context7' "$PLUGINS" "$HOME/.claude.json" .mcp.json 2>/dev/null ;;
@@ -62,8 +57,6 @@ have() {
 
 fix_for() {
   case "$1" in
-    node)      case $OS in mac) echo "brew install node" ;; win) echo "scoop install nodejs" ;;
-                           *) echo "https://nodejs.org — or your distro's package manager" ;; esac ;;
     curl)      case $OS in mac) echo "brew install curl" ;; *) echo "sudo apt install curl" ;; esac ;;
     officecli) case $OS in mac) echo "brew install officecli" ;; win) echo "scoop install officecli" ;;
                            *) echo "npm install -g @officecli/officecli" ;; esac ;;
@@ -71,10 +64,8 @@ fix_for() {
     gh)        case $OS in mac) echo "brew install gh" ;; win) echo "scoop install gh" ;;
                            *) echo "sudo apt install gh" ;; esac ;;
     headless)  echo "pip install playwright && playwright install chromium  (or install Chrome/Chromium)" ;;
-    browser)   case $OS in wsl) echo "sudo apt install wslu" ;;
-                           *) echo "install a desktop browser, or open the URL manually" ;; esac ;;
-    excalidraw)  echo "claude mcp add excalidraw --scope user -e EXCALIDRAW_NO_AUTOSTART=1 -- npx -y mcp-excalidraw-server" ;;
     superpowers) echo "/plugin install superpowers@claude-plugins-official" ;;
+    ppt-master) echo "npx skills add hugohe3/ppt-master" ;;
     archify)   echo "https://github.com/tt-a1i/archify — or re-link it into ~/.agents/skills/archify" ;;
     context7)    echo "/plugin install context7@claude-plugins-official" ;;
     codegraph)   echo "npm install -g @colbymchenry/codegraph  (then: codegraph init -i in the repo)" ;;
@@ -100,10 +91,11 @@ selftest() {
   echo "selftest ok"; exit 0
 }
 
-FIX=0
+FIX=0 SKILLS=0
 for a in "$@"; do
   case "$a" in
     --fix) FIX=1 ;;
+    --skills) SKILLS=1 ;;
     --selftest) selftest ;;
     -h|--help) sed -n '2,3p' "$0"; exit 0 ;;
     *) echo "unknown argument: $a" >&2; exit 2 ;;
@@ -121,6 +113,22 @@ while IFS='|' read -r name hard skills why; do
     degraded+=("$name|$skills|$why")
   fi
 done <<< "$DEPS"
+
+# Skills installed from other repos that this repo's skills hand work to.
+# Hook mode: say nothing when they're all here, so a healthy session start is quiet.
+if [ $SKILLS -eq 1 ]; then
+  missing=()
+  for row in "${dead[@]+"${dead[@]}"}" "${degraded[@]+"${degraded[@]}"}"; do
+    IFS='|' read -r name skills _ <<< "$row"
+    case " archify ppt-master superpowers " in
+      *" $name "*) missing+=("$name (used by $skills): $(fix_for "$name")") ;;
+    esac
+  done
+  [ ${#missing[@]} -eq 0 ] && exit 0
+  { echo "skills-doctor: missing skills this plugin routes to — install before using them:"
+    printf '  %s\n' "${missing[@]}"; } | tee /dev/stderr
+  exit 2
+fi
 
 echo
 echo "skills doctor — $OS"
@@ -145,7 +153,7 @@ show "DEGRADED — the skill runs, worse:" "${degraded[@]+"${degraded[@]}"}"
 cat <<'EOF'
 Can't be checked from a shell: subagents, AskUserQuestion, TodoWrite,
 Artifact, WebFetch/WebSearch. They exist in Claude Code, which is why
-autopilot, yolo, and whiteboard's explain mode are Claude Code only.
+autopilot and yolo are Claude Code only.
 Run /skills-doctor inside Claude Code to have those checked for real.
 EOF
 echo

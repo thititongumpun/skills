@@ -539,5 +539,5 @@ looked at the slide.
 - Mermaid already renders in GitHub, on claude.ai, and in a published
   Artifact — but **not** in the Claude Code terminal, which has no graphics
   protocol and prints the fence as literal text. Only reach for this skill
-  when the target really is PowerPoint; reach for `whiteboard` when you
+  when the target really is PowerPoint; reach for `archify` when you
   just need to *see* a diagram to agree on it.
