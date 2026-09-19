@@ -53,6 +53,13 @@ target repo has none. Without codegraph at all it still works — it falls back
 to reading entrypoints and config, and says in the report that the map is
 shallower.
 
+### Needed for n8n-upgrade: docker, curl; jq for the workflow diff
+
+`n8n-upgrade` drives `docker compose` and the n8n REST API directly, so it is
+dead without `docker` and `curl`. `jq` is optional — without it the
+before/after active-workflow diff is printed as raw JSON for you to compare
+by eye, and the skill says so.
+
 ### Needed for mfec-pptx-diagram: officecli, and python3 for the helpers
 
 The skill is dead without [officecli](https://officecli.ai) — there is no
@@ -146,6 +153,15 @@ tool).
   [ppt-master](https://github.com/hugohe3/ppt-master) (MIT,
   `npx skills add hugohe3/ppt-master`), installed side by side rather than
   bundled: it's 115 MB and self-checks its own files.
+- **n8n-upgrade** — upgrade a self-hosted docker-compose n8n stack (n8n plus
+  the `n8nio/runners` sidecar) to a pinned or latest stable tag: reads the
+  official release notes and BREAKING-CHANGES for the version range, reports
+  every env var or node that is deprecated, removed, or default-flipped with a
+  replacement and stops for approval, snapshots DB + data volume + workflow and
+  credential exports, bumps both tags together, then proves every previously
+  active workflow is still active and runs a smoke workflow. Rollback is
+  restore-from-snapshot, written out as steps, because n8n migrations don't
+  revert.
 - **explain-repo** — "what does this repo even do?" Reads a codebase you didn't
   write and hands back a plain-language summary, one diagram, every external
   service it talks to that isn't in the tree, and an explicit list of what it

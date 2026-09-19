@@ -18,7 +18,9 @@ esac
 # ponytail: read -d '' not DEPS=$(cat <<EOF) — bash 3.2 mis-parses apostrophes
 # inside a heredoc nested in $( ). Returns 1 at EOF, hence the || true.
 IFS= read -r -d '' DEPS <<'EOF' || true
-curl|hard|fetch-403|rung 1 can't run at all
+curl|hard|fetch-403, n8n-upgrade|rung 1 can't run at all; n8n-upgrade can't reach the API
+docker|hard|n8n-upgrade|can't inspect, pull, or restart the stack
+jq|soft|n8n-upgrade|active-workflow diff falls back to raw JSON
 officecli|hard|mfec-pptx-diagram|entire skill is dead, zero fallback
 python3|soft|mfec-pptx-diagram|no layout gate or flow animation; the diagram still lands
 markdown|soft|fetch-403|pages come back as raw HTML instead of markdown
@@ -74,6 +76,9 @@ fix_for() {
     python3)   case $OS in mac) echo "brew install python" ;; win) echo "scoop install python" ;;
                            *) echo "sudo apt install python3" ;; esac ;;
     rtk)       echo "optional; skip unless you already use rtk" ;;
+    docker)    echo "https://docs.docker.com/engine/install/" ;;
+    jq)        case $OS in mac) echo "brew install jq" ;; win) echo "scoop install jq" ;;
+                           *) echo "sudo apt install jq" ;; esac ;;
   esac
 }
 
