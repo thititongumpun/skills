@@ -60,6 +60,12 @@ dead without `docker` and `curl`. `jq` is optional — without it the
 before/after active-workflow diff is printed as raw JSON for you to compare
 by eye, and the skill says so.
 
+### Needed for my-facebook-reels-workflows: ssh to the homelab
+
+Everything runs as `ssh <alias> "cd <compose dir> && docker compose exec …"`,
+so the only local dependency is an ssh alias that reaches the homelab host;
+`docker` and the n8n CLI live there.
+
 ### Needed for mfec-pptx-diagram: officecli, and python3 for the helpers
 
 The skill is dead without [officecli](https://officecli.ai) — there is no
@@ -132,6 +138,10 @@ tool).
   RBAC/ACLs, networking, scaling, DR, cost.
 - **confluent-kafka-developer** — Kafka/Confluent *application* work:
   producers/consumers, Streams, Connect, ksqlDB, Flink.
+- **debezium** — research a Debezium / Confluent CDC question against the
+  official docs for the exact database and Debezium series, and return a ranked
+  recommendation with citations; compares Debezium with Confluent-native Oracle
+  CDC / XStream and builds upgrade lists from release notes.
 - **fetch-403** — recover a page the fetcher was refused, without quietly
   falling back to memory.
 - **mfec-kafka-connect** — the change loop for a Kafka Connect connector in an
@@ -162,6 +172,12 @@ tool).
   active workflow is still active and runs a smoke workflow. Rollback is
   restore-from-snapshot, written out as steps, because n8n migrations don't
   revert.
+- **my-facebook-reels-workflows** — sync and deploy the Thai-news → Facebook
+  Reels n8n workflows (khaosod, thaipbs, sanook) between the homelab n8n
+  container and the repo's `workflows/` dir: pull the live JSON, back it up,
+  import an edited copy over ssh + docker compose, re-publish, restart, and
+  prove every workflow is still active with a smoke run. Rollback is
+  re-importing the backup.
 - **explain-repo** — "what does this repo even do?" Reads a codebase you didn't
   write and hands back a plain-language summary, one diagram, every external
   service it talks to that isn't in the tree, and an explicit list of what it

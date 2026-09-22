@@ -111,7 +111,8 @@ Property renames observed between the live 1.9 configs and the 3.4.1 set:
 Migrate by diffing the connector's own old/new pair, not from this table
 alone — confirm each rename against the Debezium release notes for the
 target version, and run the `validate` endpoint on the worker that carries
-the new plugin before anything else.
+the new plugin before anything else. For version-specific property semantics
+or choosing a new connector, use the `debezium` skill.
 
 ## House SMTs
 
