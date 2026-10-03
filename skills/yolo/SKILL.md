@@ -1,7 +1,7 @@
 ---
 name: yolo
 argument-hint: "<task to run unattended>"
-description: You Only Live Once — unattended task execution while the user is away. Asks everything up front in one burst, then goes fully silent — plans, executes via subagents, reviews, and finishes with a summary; unsafe or irreversible actions are skipped and logged instead of blocking. Use when the user says "yolo", "/yolo <task>", "do it all while I'm away/eating/sleeping", or "run this unattended, don't ask me anything". Claude Code only.
+description: You Only Live Once — unattended task execution while the user is away. Asks everything up front in one burst, then goes fully silent — plans, executes via subagents on the latest model, reviews, and finishes with a ponytail + i-have-adhd summary; unsafe or irreversible actions are skipped and logged instead of blocking. Use when the user says "yolo", "/yolo <task>", "do it all while I'm away/eating/sleeping", or "run this unattended, don't ask me anything". Claude Code only.
 ---
 
 # yolo — You Only Live Once
@@ -41,17 +41,12 @@ resolve: query context7 (autopilot Phase 1 covers the how) and pin the version
 to what the project depends on. Nobody is awake to catch a plausible method
 name that doesn't exist, and it fails hours into the run.
 
-## Override 2 — Planner model heuristic
+## Override 2 — Latest model everywhere
 
-Planner/reviewer default `model: "opus"`. Escalate the *planner* to
-`model: "fable"` when the task is very complex or needs expert / professional
-judgment (opus itself may recommend this in Phase 1). Execution subagents run
-on `model: "sonnet"`; escalate a task's executor to the planner's model
-only when Phase 1 flagged that task `complex: true`, and drop it to
-`model: "haiku"` only when Phase 1 flagged that task `simple: true` (autopilot
-Phase 1 defines the bar). Never leave `model` unset — unattended, an inherited
-session default silently retiers the whole run and nobody is awake to notice.
-A mis-tiered task costs a silent retry, so leave both flags off when unsure.
+autopilot's model rule applies unchanged: every Agent call — planner,
+executors, reviewer, fix agents — is `model: "fable"`. Never leave `model`
+unset — unattended, an inherited session default silently runs the whole
+plan on whatever the session is on and nobody is awake to notice.
 
 ## Override 3 — Safety: skip & log, never touch, never wait
 
@@ -67,8 +62,8 @@ Unattended means no confirmer is present, so defer instead of confirm.
 
 ## Override 4 — Always finish with a summary
 
-Use autopilot's Phase 5 exactly — same three headings, same plain language,
-same rules — with one heading added, and the unsafe list folded into the
+Use autopilot's Phase 5 exactly — load `ponytail` and `i-have-adhd` first,
+same three headings, same plain language, same rules — with one heading added, and the unsafe list folded into the
 last one. The prose itself follows autopilot's Phase 5 style: one line per
 item, no paragraphs, cut any explanation longer than the thing it explains.
 
@@ -99,10 +94,6 @@ item, no paragraphs, cut any explanation longer than the thing it explains.
 - The Override 3 deferred list lives under **What you need to do next**, one
   line each with the exact command you would have run and why you skipped it.
   It's a user action, not a separate section.
-- The counts line also names any `simple`-flagged task that missed on haiku
-  and had to be redispatched (`8 tasks, 1 retry, 1 fix round, review clean`).
-  The user slept through it; a repeat offender means the plan's `simple` bar
-  is set too loose.
 - Blocked tasks follow autopilot's rule — `Still broken:` under **What broke
   and got fixed**, with what was tried. Don't force past a blocker to keep
   the loop moving.

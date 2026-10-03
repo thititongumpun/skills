@@ -1,7 +1,7 @@
 ---
 name: autopilot
 argument-hint: "<task to run end to end>"
-description: Fully self-driven task execution — Opus/Fable plans the work into a task list, subagents execute each task (escalating to Opus/Fable when a task is judged complex), then Opus/Fable reviews everything for bugs/improvements and loops fixes back until clean. Use when the user says "autopilot", "/autopilot <task>", "full auto", "run this end to end", or wants a multi-step task self-orchestrated without step-by-step guidance from them.
+description: Fully self-driven task execution — a Fable planner breaks the work into a task list, Fable subagents execute each task, then a Fable reviewer checks everything for bugs/improvements and loops fixes back until clean; the hand-back summary is written under the ponytail and i-have-adhd skills. Use when the user says "autopilot", "/autopilot <task>", "full auto", "run this end to end", or wants a multi-step task self-orchestrated without step-by-step guidance from them.
 ---
 
 # Autopilot
@@ -12,9 +12,10 @@ yourself, you have drifted — dispatch it instead. "This task is small, I'll
 just do it" is the one failure that actually happens, and a change you made
 by hand gets no execution report and no cold review.
 
-Default planner/reviewer model is `opus`. Use `fable` instead only if the
-user asked for it. Default fix-loop cap is 2 rounds unless the user says
-otherwise.
+Every Agent call — planner, executors, reviewer, fix agents — runs on the
+latest model, `model: "fable"`. No tiering by task size: a cheaper tier saves
+tokens and costs a retry nobody wants to babysit. Default fix-loop cap is 2
+rounds unless the user says otherwise.
 
 If `rtk` is on the machine, shell commands — yours and every subagent's —
 go through it (`rtk git status`, `rtk cargo test`): same output, far fewer
@@ -25,39 +26,25 @@ tokens. Say so in each subagent's brief; they don't inherit this.
 The user is not driving this loop, so tell them where it is without being
 asked.
 
-- After Phase 1, print the full numbered task list, marking which tasks are
-  flagged complex or simple and the model each will run on. That's the total
-  scope — the user can't judge "remaining" until they've seen it, and a task
-  tiered wrong is easiest to catch before it runs.
+- After Phase 1, print the full numbered task list. That's the total
+  scope — the user can't judge "remaining" until they've seen it.
 - If `TodoWrite` is available, mirror the task list into it (one todo per
   task, plus one for Review) and keep statuses current — that's the native
-  progress UI. Carry the model in each todo's text too (`Add DLQ handling
-  [opus]`); the todo list is what the user actually watches.
+  progress UI. The todo list is what the user actually watches.
 - If it isn't available, reprint the checklist as state changes, so the
   user always sees what's done and what's left:
 
   ```
   [3/8 done] Executing
-  ✅ 1. Define Avro schema + compatibility mode   [sonnet]
-  ✅ 2. Add idempotent producer config            [sonnet]
-  ✅ 3. Wire Schema Registry client               [sonnet]
-  ⏳ 4. Add DLQ handling                          [opus]    (complex)
-  ⬜ 5. Streams topology tests                    [sonnet]
-  ⬜ 6. Bump connector version                    [haiku]   (simple)
-  ⬜ 7. Update docs                               [haiku]   (simple)
-  ⬜ 8. Review                                    [opus]
+  ✅ 1. Define Avro schema + compatibility mode
+  ✅ 2. Add idempotent producer config
+  ✅ 3. Wire Schema Registry client
+  ⏳ 4. Add DLQ handling
+  ⬜ 5. Streams topology tests
+  ⬜ 6. Bump connector version
+  ⬜ 7. Update docs
+  ⬜ 8. Review
   ```
-
-  **Every row names the model that runs it** — no blanks, no "inherits the
-  default." Every task has an explicit model (Phase 2), so print it: the
-  user sees the whole tiering at a glance instead of reverse-engineering it
-  from which rows are annotated. Keep the tier flag in parentheses after
-  the model where one applies.
-
-  Same rule for the phases the user doesn't see as tasks: the Phase 1 plan
-  line and Phase 4 fix agents carry their model too (`[opus] planning`,
-  `Fixing 3 findings [opus]`). If a `simple` task got redispatched (Phase 2),
-  show both: `[haiku → sonnet] (simple, retried)`.
 
   Reprint on each state change, not on every tool call — one refreshed
   checklist per batch of task completions is enough.
@@ -70,7 +57,7 @@ The in-chat checklist scrolls away and `TodoWrite` dies with the session, so
 the task list also lives on disk at `.claude/autopilot-tasks.md`.
 
 - Write it at the end of Phase 1, before dispatching anything: the same
-  numbered list, one `- [ ]` per task, with the model and any tier flag.
+  numbered list, one `- [ ]` per task.
 - Update the file on each state change — the same moments you'd reprint the
   checklist. Mark `- [x]` when a task's pass condition passed, and put the
   currently running one(s) under a `**Executing:**` line at the top with the
@@ -80,10 +67,10 @@ the task list also lives on disk at `.claude/autopilot-tasks.md`.
 
 ```markdown
 # Autopilot: add DLQ handling to the order consumer
-**Executing:** 4. Add DLQ handling [opus] — phase 2, 3/8 done
+**Executing:** 4. Add DLQ handling — phase 2, 3/8 done
 
-- [x] 1. Define Avro schema + compatibility mode   [sonnet]
-- [ ] 4. Add DLQ handling                          [opus]   (complex)
+- [x] 1. Define Avro schema + compatibility mode
+- [ ] 4. Add DLQ handling
 …the same rows as the checklist above, as checkboxes.
 ```
 
@@ -133,8 +120,7 @@ proceed to Phase 1 once the request is concrete enough to plan.
 
 ## Phase 1: Plan
 
-Deploy one Agent call, `model: "opus"` (or `"fable"`), given the user's
-full request. Before committing to an approach it must, brainstorming-style
+Deploy one Agent call, `model: "fable"`, given the user's full request. Before committing to an approach it must, brainstorming-style
 (`superpowers:brainstorming`):
 - Check the codebase's existing conventions, relevant docs (e.g. via
   context7 or project docs), and established patterns for the domain. When
@@ -163,20 +149,7 @@ file shape, or comparison that decides it's done. "Looks right" is not a
 pass condition — a task whose done-ness can't be checked is a task the
 executor gets to declare finished on its own say-so.
 
-It must return an ordered task list, each task marked `complex: true` only
-when it genuinely needs strong reasoning — ambiguous requirements,
-architecture-sensitive, security/correctness-critical. Don't mark things
-complex by default; most mechanical, well-scoped tasks aren't.
-
-A task may instead be marked `simple: true` when all three hold: it touches
-**one known file** whose path the plan already names, the change is fully
-specified in the task itself (no codebase search, no convention to infer,
-no design choice left open), and the pass condition is a single command or
-exact string check. Renames, config/version bumps, adding a declared import,
-doc and comment text. If a task needs to *find* where to change something,
-read a second file to know what to write, or judge whether the result is
-right, it isn't simple — leave it unmarked. `simple` and `complex` are
-mutually exclusive; when unsure, leave both off.
+It must return an ordered task list.
 
 ## Phase 2: Execute
 
@@ -190,19 +163,11 @@ For each planned task, deploy one Agent call:
   meet its pass condition stops and reports back — it doesn't improvise a
   different task than the one it was given. Its dependents are then
   blocked: report them as blocked rather than dispatching them anyway.
-- `model`: set `model: "sonnet"` for normal tasks — the middle tier is
-  explicit, not inherited. Set `model: "opus"` (or `"fable"`, matching
-  Phase 1) only for tasks flagged `complex: true`, and `model: "haiku"`
-  only for tasks flagged `simple: true`. Never omit `model`: inheriting the
-  session default means the same plan runs a different tiering depending on
-  what the user happens to be chatting on, and on an Opus session it
-  quietly puts every unmarked task on Opus — the `complex` flag then buys
-  nothing and the whole run is Opus-priced.
-- If a `haiku` agent misses its pass condition or reports back confused
-  about the task, redispatch that one task once on `model: "sonnet"` before
-  treating it as failed — a mis-tiered task is cheap to retry and shouldn't
-  block its dependents. Two misses on the same task is a plan problem, not
-  a model problem: report it.
+- `model: "fable"` on every call. Never omit it: an inherited session
+  default silently runs the plan on whatever the user happens to be
+  chatting on.
+- A task that misses its pass condition twice is a plan problem, not a
+  model problem: report it, don't retry a third time.
 - Dispatch independent tasks in parallel (single message, multiple Agent
   calls) — but only when they clearly touch different files; two agents
   editing the same file clobber each other and the review only ever sees
@@ -211,7 +176,7 @@ For each planned task, deploy one Agent call:
 
 ## Phase 3: Review
 
-Deploy one Agent call on the Phase 1 model, given the user's original
+Deploy one Agent call, `model: "fable"`, given the user's original
 request, the full task list, every execution report, and the `## Build
 lazy` rules verbatim. It must check the result against that original
 request, not just against the plan — a
@@ -251,7 +216,13 @@ If Phase 3 found issues:
 ## Phase 5: Hand back
 
 The user did not watch the run, so this last message is the whole story for
-them. Write it ponytail-terse: plain language, one line per item, no
+them. Before writing it, load both output skills with the Skill tool:
+`ponytail` (shortest thing that works, nothing unrequested) and
+`i-have-adhd` (next action first, numbered steps, no closers). If
+`i-have-adhd` is not offered to the Skill tool — the stock plugin is
+user-invocable only — its rules already arrived via this repo's
+`hooks/adhd-output.sh` when this skill was invoked; apply them from there.
+Then write it under both: plain language, one line per item, no
 paragraphs, no jargon, no phase numbers, no model names, no tool names. If
 an explanation of a change would run longer than the change itself, cut
 the explanation — no design-notes essays. Someone who never read the plan
