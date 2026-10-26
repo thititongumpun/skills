@@ -37,8 +37,9 @@ backup path before Step 3 and waits for a yes.
 
 ## Step 0 — locate the homelab
 
-`homelab.env` in the project dir holds `N8N_SSH=<ssh alias>` and
-`N8N_DIR=<compose dir on the host>`. Missing? Ask once, write it, and add it
+`homelab.env` in the project dir holds `N8N_SSH=<ssh alias>`,
+`N8N_DIR=<compose dir on the host>` and `N8N_PG=<Postgres container holding
+the n8n db>` (homelab: `pg18`). Missing? Ask once, write it, and add it
 to `.gitignore`. Then:
 
 ```bash
@@ -93,15 +94,32 @@ Keep `id`, `versionId`, and every `credentials` block exactly as synced; pick
 in one of the three workflows rather than from memory. Validate before
 deploying: `python3 -m json.tool workflows/<name>.json >/dev/null`.
 
-## Step 3 — import the edited file(s)
+## Step 3 — wait for running executions, then import the edited file(s)
+
+Import deactivates the workflow and its webhook stays unregistered until the
+Step 4 restart, and the restart kills any render in flight. So drain first,
+then run Steps 3 → 4 back to back in **one** command; never split them across
+tool calls, since a rejected or interrupted call leaves the webhook off.
 
 ```bash
-ssh "$N8N_SSH" "cd $N8N_DIR && docker compose exec -T -u node n8n sh -c 'cat >/tmp/w.json && n8n import:workflow --input=/tmp/w.json'" < workflows/<name>.json
+# executions still running (n8n keeps them in Postgres; container = $N8N_PG, db n8n)
+running() { ssh "$N8N_SSH" "docker exec $N8N_PG psql -U admin -d n8n -At -c \"select count(*) from execution_entity where status in ('running','new') and \\\"stoppedAt\\\" is null\""; }
+for i in $(seq 1 60); do n=$(running); [ "$n" = 0 ] && break; echo "running: $n, waiting"; sleep 15; done   # 15 min cap
+[ "$(running)" = 0 ] || { echo "still running after 15 min — ask before deploying"; exit 1; }
 ```
 
-Import upserts by the JSON's `id`, so the file must keep the id it was synced
-with. A changed id is a second copy, not an update. Credentials are referenced
-by id inside nodes and are not exported; do not edit those ids.
+Renders take 4–6 min. Hitting the cap means a stuck execution: show it and
+ask, don't restart over it.
+
+```bash
+# own temp file per import (node-owned, removed on exit); any failure → non-zero
+imp() { ssh "$N8N_SSH" "cd $N8N_DIR && docker compose exec -T -u node n8n sh -ec 'f=\$(mktemp /tmp/import-XXXXXX); trap \"rm -f \$f\" EXIT; cat >\"\$f\"; n8n import:workflow --input=\"\$f\"'" < "$1"; }
+imp workflows/<name>.json || { echo "import failed — not publishing/restarting"; exit 1; }
+```
+
+Never run Step 4 after an import that did not exit 0. Import upserts by the
+JSON's `id`, so the file must keep the id it was synced with. A changed id is a second copy, not an update. Credentials are
+referenced by id inside nodes and are not exported; do not edit those ids.
 
 ## Step 4 — re-publish and restart
 
@@ -131,7 +149,7 @@ Do not fix forward without asking.
 ```bash
 B=${1:-$(ls -d backups/n8n-workflows-*/ | tail -1)}      # newest unless a dir is named
 for f in "$B"/*.json; do
-  ssh "$N8N_SSH" "cd $N8N_DIR && docker compose exec -T -u node n8n sh -c 'cat >/tmp/w.json && n8n import:workflow --input=/tmp/w.json'" < "$f"
+  imp "$f" || { echo "rollback import failed: $f — not restarting"; exit 1; }   # imp() from Step 3
 done
 ```
 
@@ -157,3 +175,6 @@ restarted:      yes/no    next: commit workflows/<name>.json
 - **Renamed workflow** — the slug changes, the old file stays in `workflows/` and looks like a deleted workflow. Delete the stale file, keep the id.
 - **Edited in the editor UI after the sync** — Step 3 silently overwrites it. Run Step 1 again right before Step 2 if any time has passed.
 - **`update:workflow --active`** — deprecated since 2.0; `publish:workflow` / `unpublish:workflow` only.
+- **Import split from restart (2026-10-23)** — an interrupted deploy left Sanook imported (= deactivated) for 2 min; the worker's webhook got `404 "GET snn" is not registered` and the story waited for the next 10-min poll. Drain, then Steps 3–4 in one command. The worker now retries only "never started" answers (404 not-registered, 502/503, connection refused) for ~2 min; a timeout or 500 is never retried, since that re-publishes the reel.
+- **Fixed `/tmp/w.json` import path (2026-10-27)** — a stale root-owned `/tmp/w.json` in the container made `cat >/tmp/w.json` fail as `node` ("Permission denied"); nothing was imported, and a chained restart would have reported a deploy that did nothing. Import through `imp()` (a fresh `mktemp /tmp/import-XXXXXX`, `sh -e`, removed on exit) and stop on non-zero.
+- **Smoke-test a render without publishing (2026-10-27)** — copy the workflow JSON, give it a new `id`/name, swap its trigger for a `manualTrigger`, delete every node downstream of "Execute FFmpeg Command", make "Pick Article" a read-only `SELECT` of an already-used article (no `UPDATE … used=true`), replace "Save Script" with an echo, disable the Telegram nodes; import it with `imp`. Plain `n8n execute` fails (the main process holds the task broker port 5679, runners are external), so run: `ssh "$N8N_SSH" "cd $N8N_DIR && docker compose exec -d -u node -e N8N_RUNNERS_MODE=internal -e N8N_RUNNERS_BROKER_PORT=5699 -e N8N_PORT=5799 -e QUEUE_HEALTH_CHECK_PORT=5798 n8n sh -c 'n8n execute --id <demo-id> > /tmp/<demo-id>.out 2>&1'"`. Video: `/tmp/n8n_ffmpeg/<baseName>.mp4`. Then delete the demo: `docker exec $N8N_PG psql -U admin -d n8n -c "DELETE FROM execution_entity WHERE \"workflowId\"='<id>'; DELETE FROM workflow_entity WHERE id='<id>';"` and `rm /tmp/<demo-id>.out`. No restart needed.
