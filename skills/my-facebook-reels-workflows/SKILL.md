@@ -1,7 +1,7 @@
 ---
 name: my-facebook-reels-workflows
 argument-hint: "[sync | <edit request> | deploy <workflows/name.json> | rollback [backup dir]]"
-description: Sync and deploy the Thai-news → Facebook Reels n8n workflows (news khaosod, news thaipbs, news sanook) between the homelab n8n container and the current repo's workflows/ dir — pull the live JSON down, back it up, import an edited copy over ssh + docker compose, re-publish it, restart n8n, and prove it is active with a smoke run. Use when the user mentions the reels pipeline, 1minhotspot-worker, fb-auto-reply, khaosod/thaipbs/sanook workflows, or asks to sync, pull, push, edit, or roll back an n8n workflow in the homelab.
+description: Sync and deploy the Thai-news → Facebook Reels n8n workflows (news khaosod, news thaipbs, news sanook) between the homelab n8n container and the current repo's workflows/ dir — pull the live JSON down, back it up, import an edited copy over ssh + docker compose (pausing it first if executions are queued in Postgres), restart n8n, re-activate it, and prove it is active with a smoke run. Use when the user mentions the reels pipeline, 1minhotspot-worker, fb-auto-reply, khaosod/thaipbs/sanook workflows, or asks to sync, pull, push, edit, or roll back an n8n workflow in the homelab.
 ---
 
 # Facebook Reels workflows
@@ -48,6 +48,12 @@ n8n() { ssh "$N8N_SSH" "cd $N8N_DIR && docker compose exec -T -u node n8n n8n $*
 n8n --version                       # must be 2.x — 1.x has no publish:workflow
 n8n list:workflow                   # id|name, the inventory
 n8n list:workflow --active=true     # what must still be active at the end
+```
+
+`pgq` runs one SQL statement against the n8n db (Steps 3–5 use it):
+
+```bash
+pgq() { ssh "$N8N_SSH" "docker exec -i $N8N_PG psql -U admin -d n8n -tA" <<<"$1"; }
 ```
 
 ## Step 1 — sync homelab → `workflows/` (always first)
@@ -101,9 +107,23 @@ Step 4 restart, and the restart kills any render in flight. So drain first,
 then run Steps 3 → 4 back to back in **one** command; never split them across
 tool calls, since a rejected or interrupted call leaves the webhook off.
 
+First look at the queue:
+
+```bash
+pgq "select \"workflowId\", status from execution_entity where status in ('running','new')"
+```
+
+- **Empty** → import straight away.
+- **Anything listed** (`running`, or `new` = waiting on
+  `N8N_CONCURRENCY_PRODUCTION_LIMIT`) → pause each workflow about to be
+  imported first, `n8n unpublish:workflow --id <id>`, so nothing new queues
+  behind it, then wait with the loop below. Paused workflows return 404 to
+  the worker meanwhile; that is expected, the worker re-sends unused articles
+  on its next tick. Step 4 re-activates them.
+
 ```bash
 # executions still running (n8n keeps them in Postgres; container = $N8N_PG, db n8n)
-running() { ssh "$N8N_SSH" "docker exec $N8N_PG psql -U admin -d n8n -At -c \"select count(*) from execution_entity where status in ('running','new') and \\\"stoppedAt\\\" is null\""; }
+running() { pgq "select count(*) from execution_entity where status in ('running','new') and \"stoppedAt\" is null"; }
 for i in $(seq 1 60); do n=$(running); [ "$n" = 0 ] && break; echo "running: $n, waiting"; sleep 15; done   # 15 min cap
 [ "$(running)" = 0 ] || { echo "still running after 15 min — ask before deploying"; exit 1; }
 ```
@@ -121,16 +141,22 @@ Never run Step 4 after an import that did not exit 0. Import upserts by the
 JSON's `id`, so the file must keep the id it was synced with. A changed id is a second copy, not an update. Credentials are
 referenced by id inside nodes and are not exported; do not edit those ids.
 
-## Step 4 — re-publish and restart
+## Step 4 — restart, then re-activate (every import, no exceptions)
 
 ```bash
-n8n publish:workflow --id <id>      # each imported id in active-before.txt
+n8n publish:workflow --id <id>      # each imported id in active-before.txt, including any paused in Step 3
 ssh "$N8N_SSH" "cd $N8N_DIR && docker compose restart n8n"
 ssh "$N8N_SSH" 'for i in $(seq 1 24); do curl -sf http://localhost:5678/healthz && break; sleep 5; done'   # 120 s cap
+pgq 'select "workflowId", "webhookPath" from webhook_entity'   # every imported webhook workflow listed
 ```
 
-The restart is not optional: a CLI import or publish does not re-register the
-webhook or schedule triggers inside the running process. `restart`, never
+The restart is not optional: `import:workflow` deletes the workflow's
+`webhook_entity` rows and `publish:workflow` does not put them back, so
+without a restart the worker gets `404 "GET <path>" is not registered` while
+the workflow still shows active (hit 2026-10-27: an hour of news lost).
+Re-run the `webhook_entity` query a few seconds after `/healthz` passes; rows
+appear only once "Start Active Workflows" finishes. Don't probe a webhook with
+`curl -I`/`wget --spider`: HEAD always 404s, and a real GET posts to Facebook. `restart`, never
 `down` — `down` on an anonymous volume takes the encryption key with it.
 
 ## Step 5 — prove it
@@ -138,6 +164,7 @@ webhook or schedule triggers inside the running process. `restart`, never
 ```bash
 n8n list:workflow --active=true > "$B/active-after.txt"
 diff "$B/active-before.txt" "$B/active-after.txt"      # empty, or a failure
+pgq "select count(*) from execution_entity where status in ('running','new')"   # nothing stuck from before the restart
 n8n execute --id <id>                                  # one imported workflow, or POST the worker's webhook path
 ```
 
@@ -174,6 +201,8 @@ restarted:      yes/no    next: commit workflows/<name>.json
 - **`docker compose exec` without `-T`** — allocates a TTY over ssh; stdin redirect hangs and the export JSON picks up carriage returns. Always `-T`.
 - **Renamed workflow** — the slug changes, the old file stays in `workflows/` and looks like a deleted workflow. Delete the stale file, keep the id.
 - **Edited in the editor UI after the sync** — Step 3 silently overwrites it. Run Step 1 again right before Step 2 if any time has passed.
+- **Import without restart** — workflow shows active, webhooks 404. See Step 4.
+- **Restart over a queued run** — `new` executions behind the concurrency limit die with the restart. Drain first (Step 3).
 - **`update:workflow --active`** — deprecated since 2.0; `publish:workflow` / `unpublish:workflow` only.
 - **Import split from restart (2026-10-23)** — an interrupted deploy left Sanook imported (= deactivated) for 2 min; the worker's webhook got `404 "GET snn" is not registered` and the story waited for the next 10-min poll. Drain, then Steps 3–4 in one command. The worker now retries only "never started" answers (404 not-registered, 502/503, connection refused) for ~2 min; a timeout or 500 is never retried, since that re-publishes the reel.
 - **Fixed `/tmp/w.json` import path (2026-10-27)** — a stale root-owned `/tmp/w.json` in the container made `cat >/tmp/w.json` fail as `node` ("Permission denied"); nothing was imported, and a chained restart would have reported a deploy that did nothing. Import through `imp()` (a fresh `mktemp /tmp/import-XXXXXX`, `sh -e`, removed on exit) and stop on non-zero.
