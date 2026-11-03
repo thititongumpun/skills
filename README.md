@@ -144,6 +144,9 @@ tool).
   CDC / XStream and builds upgrade lists from release notes.
 - **fetch-403** — recover a page the fetcher was refused, without quietly
   falling back to memory.
+- **peekaboo-teams** — send / find / open a Microsoft Teams chat on macOS via
+  the Peekaboo CLI: search the chat, screenshot-verify header and draft, send,
+  restore the clipboard. macOS only.
 - **mfec-kafka-connect** — the change loop for a Kafka Connect connector in an
   MFEC customer pipeline: house file/connector/topic naming, validate against the
   worker, diff against live, deploy, watch status, prove the data with the IVT
