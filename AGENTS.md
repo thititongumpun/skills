@@ -28,5 +28,6 @@ when working inside this repo.
 | `explain-repo` | Someone needs to understand a repo they didn't write — "what does this do", onboarding, inheriting a service. Produces a plain-language summary, one architecture diagram (drawn by the external `archify` skill), the external services it depends on, and an explicit list of what could not be determined. Uses CodeGraph (`codegraph init -i` if the repo has no index); degrades to entrypoint reads without it. Read-only. |
 | `sync-skill-installs` | Anything under `skills/` in this repo changed, or the user says "reinstall global" / "sync the installs". Copies source into `~/.agents/skills/` and `.agents/skills/`, refreshes `skills-lock.json`, and verifies both match — the three copies do not share files, so editing `skills/` alone changes nothing an agent loads. |
 | `skills-doctor` | A skill here needs a tool that isn't installed, something degraded silently, or you want to know what to install after a fresh clone. Run `scripts/doctor.sh`. |
+| `thai` | User types `/thai` / `ไทย` (switch the rest of the session to casual, short Thai with ponytail + i-have-adhd + rtk) or `/thai off` (back to English). |
 
 New skill added to this repo? Add a row here too.

@@ -1,7 +1,7 @@
 {
   "name": "skills",
   "version": "0.2.0",
-  "description": "Personal Claude Code skills \u2014 self-orchestrated task execution, Kafka/Confluent admin and dev, and more.",
+  "description": "Personal Claude Code skills — self-orchestrated task execution, Kafka/Confluent admin and dev, and more.",
   "author": {
     "name": "thititongumpun"
   },
@@ -32,6 +32,7 @@
     "./skills/rabbitmq",
     "./skills/skills-doctor",
     "./skills/sync-skill-installs",
+    "./skills/thai",
     "./skills/yolo"
   ],
   "commands": [

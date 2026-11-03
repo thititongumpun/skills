@@ -144,6 +144,8 @@ tool).
   CDC / XStream and builds upgrade lists from release notes.
 - **fetch-403** — recover a page the fetcher was refused, without quietly
   falling back to memory.
+- **thai** — `/thai` switches the rest of the session to short, casual Thai
+  (ponytail + i-have-adhd + rtk); `/thai off` goes back to English.
 - **peekaboo-teams** — send / find / open a Microsoft Teams chat on macOS via
   the Peekaboo CLI: search the chat, screenshot-verify header and draft, send,
   restore the clipboard. macOS only.
