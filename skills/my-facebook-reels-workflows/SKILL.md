@@ -114,16 +114,19 @@ pgq "select \"workflowId\", status from execution_entity where status in ('runni
 ```
 
 - **Empty** → import straight away.
-- **Anything listed** (`running`, or `new` = waiting on
+- **Anything listed** (`running`, or `new` = queued behind
   `N8N_CONCURRENCY_PRODUCTION_LIMIT`) → pause each workflow about to be
   imported first, `n8n unpublish:workflow --id <id>`, so nothing new queues
   behind it, then wait with the loop below. Paused workflows return 404 to
   the worker meanwhile; that is expected, the worker re-sends unused articles
-  on its next tick. Step 4 re-activates them.
+  on its next tick. Step 4 re-activates them. Only `running` has to reach 0:
+  a `new` execution survives the restart — "On instance startup, n8n resumes
+  queued executions up to the concurrency limit and re-enqueues the rest"
+  (`docs.n8n.io/deploy/host-n8n/configure-n8n/scaling/control-concurrency.md`).
 
 ```bash
 # executions still running (n8n keeps them in Postgres; container = $N8N_PG, db n8n)
-running() { pgq "select count(*) from execution_entity where status in ('running','new') and \"stoppedAt\" is null"; }
+running() { pgq "select count(*) from execution_entity where status = 'running' and \"stoppedAt\" is null"; }
 for i in $(seq 1 60); do n=$(running); [ "$n" = 0 ] && break; echo "running: $n, waiting"; sleep 15; done   # 15 min cap
 [ "$(running)" = 0 ] || { echo "still running after 15 min — ask before deploying"; exit 1; }
 ```
@@ -164,7 +167,7 @@ appear only once "Start Active Workflows" finishes. Don't probe a webhook with
 ```bash
 n8n list:workflow --active=true > "$B/active-after.txt"
 diff "$B/active-before.txt" "$B/active-after.txt"      # empty, or a failure
-pgq "select count(*) from execution_entity where status in ('running','new')"   # nothing stuck from before the restart
+pgq "select id, status from execution_entity where status in ('running','new')"   # queued ones from before the restart must move on, none stuck
 n8n execute --id <id>                                  # one imported workflow, or POST the worker's webhook path
 ```
 
@@ -202,7 +205,7 @@ restarted:      yes/no    next: commit workflows/<name>.json
 - **Renamed workflow** — the slug changes, the old file stays in `workflows/` and looks like a deleted workflow. Delete the stale file, keep the id.
 - **Edited in the editor UI after the sync** — Step 3 silently overwrites it. Run Step 1 again right before Step 2 if any time has passed.
 - **Import without restart** — workflow shows active, webhooks 404. See Step 4.
-- **Restart over a queued run** — `new` executions behind the concurrency limit die with the restart. Drain first (Step 3).
+- **Restart over a running render** — a `running` execution dies with the restart; drain first (Step 3). Queued `new` ones resume on startup per the n8n docs.
 - **`update:workflow --active`** — deprecated since 2.0; `publish:workflow` / `unpublish:workflow` only.
 - **Import split from restart (2026-10-23)** — an interrupted deploy left Sanook imported (= deactivated) for 2 min; the worker's webhook got `404 "GET snn" is not registered` and the story waited for the next 10-min poll. Drain, then Steps 3–4 in one command. The worker now retries only "never started" answers (404 not-registered, 502/503, connection refused) for ~2 min; a timeout or 500 is never retried, since that re-publishes the reel.
 - **Fixed `/tmp/w.json` import path (2026-10-27)** — a stale root-owned `/tmp/w.json` in the container made `cat >/tmp/w.json` fail as `node` ("Permission denied"); nothing was imported, and a chained restart would have reported a deploy that did nothing. Import through `imp()` (a fresh `mktemp /tmp/import-XXXXXX`, `sh -e`, removed on exit) and stop on non-zero.
