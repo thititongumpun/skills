@@ -172,9 +172,11 @@ tool).
   the `n8nio/runners` sidecar) to a pinned or latest stable tag: reads the
   official release notes and BREAKING-CHANGES for the version range, reports
   every env var or node that is deprecated, removed, or default-flipped with a
-  replacement and stops for approval, snapshots DB + data volume + workflow and
-  credential exports, bumps both tags together, then proves every previously
-  active workflow is still active and runs a smoke workflow. Rollback is
+  replacement and stops for approval, unpublishes active workflows and waits
+  for running executions to drain (queued ones resume on startup), snapshots DB + data volume + workflow
+  and credential exports, bumps both tags together, re-publishes the paused
+  workflows, then proves they are active, carried-over Wait executions
+  survived, a smoke run succeeds, and 10 minutes of real executions are clean. Rollback is
   restore-from-snapshot, written out as steps, because n8n migrations don't
   revert.
 - **my-facebook-reels-workflows** — sync and deploy the Thai-news → Facebook

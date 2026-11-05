@@ -1,7 +1,7 @@
 ---
 name: n8n-upgrade
 argument-hint: "[compose dir or target version]"
-description: Upgrade a self-hosted docker-compose n8n stack (n8nio/n8n plus the n8nio/runners sidecar) to a chosen or latest stable release with a docs-verified compatibility audit, a snapshot-based rollback, and an active-workflow check before and after. Use when asked to update, upgrade, or bump n8n or its task runners, when the runner tag drifted from the n8n tag, when a release note names a removed node or env var the stack uses, or when an n8n upgrade broke workflows and needs rolling back. Official n8n docs and the upstream BREAKING-CHANGES.md only.
+description: Upgrade a self-hosted docker-compose n8n stack (n8nio/n8n plus the n8nio/runners sidecar) to a chosen or latest stable release with a docs-verified compatibility audit, pausing triggers and draining running executions before the restart (queued ones resume on startup, per the docs), a snapshot-based rollback, then resuming the paused workflows and checking executions run normally. Use when asked to update, upgrade, or bump n8n or its task runners, when the runner tag drifted from the n8n tag, when a release note names a removed node or env var the stack uses, or when an n8n upgrade broke workflows and needs rolling back. Official n8n docs and the upstream BREAKING-CHANGES.md only.
 ---
 
 # n8n upgrade
@@ -54,7 +54,7 @@ Crossing a major (for example 2.x → 3.x) adds `docs.n8n.io/changelog/`
 
 ## Step 2 — audit, report, stop
 
-Export the workflows first (this export is reused by Step 3):
+Export the workflows first (this export is reused by Step 4):
 
 ```bash
 docker compose exec -u node n8n n8n export:workflow --backup --output=/home/node/.n8n/export/
@@ -79,7 +79,8 @@ Changes required:        param · old · new · doc URL + heading
 Deprecated/removed, with replacement:
                          what · replacement · workflows affected by name
 No action:               what was checked and found clean
-Rollback plan:           snapshot dir, restore order (Step 6)
+Pause plan:              workflows to unpublish, in-flight now (Step 3)
+Rollback plan:           snapshot dir, restore order (Step 7)
 ```
 
 Where the docs remove something without naming a replacement, propose the
@@ -87,15 +88,68 @@ nearest supported one and label it "suggested, not verified": `Start` →
 `Manual Trigger` or `Execute Workflow Trigger`; `ExecuteCommand` kept only by
 clearing `NODES_EXCLUDE` with the user's consent; Pyodide Python → external
 runner Python. Then stop and ask, in one message: approve the tag bump
-yes/no; each env change yes/no; each node replacement yes/no; plus the
-Step 0 questions. **Nothing in Step 4 runs before that answer.** "Just
+yes/no; each env change yes/no; each node replacement yes/no; pausing the
+listed workflows for the window yes/no; plus the Step 0 questions.
+**Nothing from Step 3.2 on runs before that answer.** "Just
 upgrade it" approves the tag bump only; a changed env var, a cleared
-exclusion, or an edited workflow needs its own yes. Step 3 is read-only and
+exclusion, or an edited workflow needs its own yes. Step 3.1 is read-only and
 may run while waiting.
 
-## Step 3 — snapshot; no snapshot, no upgrade
+## Step 3 — baseline, pause, drain
 
-Into `backups/n8n-<current>-<UTC yyyymmddThhmmZ>/`, re-runnable:
+A `running` execution dies with the restart. An execution queued behind
+`N8N_CONCURRENCY_PRODUCTION_LIMIT` (status `new`) does not: "On instance
+startup, n8n resumes queued executions up to the concurrency limit and
+re-enqueues the rest" (`docs.n8n.io/deploy/host-n8n/configure-n8n/scaling/control-concurrency.md`).
+So before Step 5 nothing new may start and nothing may be `running`; the
+queue is left as it is and resumes by itself after the restart.
+
+**Ways to see what is running or queued** — use the first that works:
+
+| Source | Command | Notes |
+| --- | --- | --- |
+| Public API (primary) | `curl -sH "X-N8N-API-KEY: $KEY" "$URL/api/v1/executions?status=running&limit=250"`, same for `new` and `waiting` | statuses per `docs.n8n.io/connect/n8n-api/executions.md` |
+| Postgres | `docker compose exec -T db psql -U "$DB_POSTGRESDB_USER" -d "$DB_POSTGRESDB_DATABASE" -tAc "select status, count(*) from execution_entity where status in ('new','running','waiting') group by 1"` | works without an API key |
+| SQLite | same SQL with `sqlite3` on `database.sqlite` in the data volume | |
+| Editor | Executions tab; with a concurrency limit, the active/limit counter on top | eyes only |
+| Logs | `docker compose logs --since 10m n8n \| grep -i concurrency` | queue add/release lines |
+
+Statuses: `running` = in flight, wait for it. `new` = queued, survives the
+restart — record it. `waiting` = parked on a Wait node with `waitTill`,
+stored in the DB and resumed after restart — record it.
+
+1. **Baseline (read-only, may run before approval)** into the Step 4 folder:
+   `curl … "$URL/api/v1/workflows?active=true" > active-before.json`; the ids
+   of every `new`/`running`/`waiting` execution into `inflight-before.txt`;
+   the `error` + `crashed` counts; `n8n --version` into `VERSION`.
+2. **Pause** — needs the Step 2 yes, because paused webhooks answer 404 and
+   schedule ticks missed during the window are not replayed. Unpublish every
+   id in `active-before.json` through the API (live, no restart):
+   `curl -sfX POST -H "X-N8N-API-KEY: $KEY" "$URL/api/v1/workflows/<id>/unpublish"`;
+   write the ids to `paused.txt` as each one succeeds — that file is the
+   resume list, and Step 7 needs it too. Unpublishing does not cancel
+   running or queued executions.
+3. **Drain** — poll every 15 s until `running` = 0, 15-minute cap. The
+   queue keeps feeding `running` as slots free, so with a backlog this
+   also works the queue down; whatever is still `new` when `running` hits
+   0 is left for startup:
+
+```bash
+cnt() { curl -sfH "X-N8N-API-KEY: $KEY" "$URL/api/v1/executions?status=$1&limit=250" | jq '.data|length'; }
+for i in $(seq 1 60); do n=$(cnt running); [ "$n" = 0 ] && break; echo "running: $n, queued: $(cnt new)"; sleep 15; done
+curl -sfH "X-N8N-API-KEY: $KEY" "$URL/api/v1/executions?status=new&limit=250" | jq -r '.data[]|"\(.id) \(.workflowId)"' > queued-at-restart.txt   # Step 6 checks these resumed
+```
+
+   Still running at the cap → stop and ask, listing the executions (id,
+   workflow, status, startedAt): wait longer, stop them
+   (`POST /api/v1/executions/<id>/stop` — lost work, needs its own yes), or
+   abort and resume (`publish` each id in `paused.txt`). Never restart over a
+   `running` execution without that answer.
+
+## Step 4 — snapshot; no snapshot, no upgrade
+
+Taken after the drain, so the dump holds no half-run execution. Into
+`backups/n8n-<current>-<UTC yyyymmddThhmmZ>/`, re-runnable:
 
 1. Copy the compose file, `.env`, and `docker compose config` output (holds
    secrets — never commit the folder).
@@ -104,17 +158,17 @@ Into `backups/n8n-<current>-<UTC yyyymmddThhmmZ>/`, re-runnable:
    when `DB_TYPE=postgresdb` (values from env, `.env`, or the user); for
    SQLite stop n8n and copy `database.sqlite`.
 4. Volume: `docker run --rm -v <volume>:/data -v "$PWD":/backup alpine tar czf /backup/n8n_data.tgz -C /data .` — this holds the encryption key.
-5. Baseline: `curl -H "X-N8N-API-KEY: $KEY" "$URL/api/v1/workflows?active=true" > active-before.json`; the same for `/api/v1/executions?status=error` (count); `n8n --version` into `VERSION`.
 
-If the API call 401s, verify header and path on `docs.n8n.io`; do not guess.
+If an API call 401s, verify header and path on `docs.n8n.io`; do not guess.
 
-## Step 4 — apply
+## Step 5 — apply
 
 Edit the compose file so `n8nio/n8n:<target>` and `n8nio/runners:<target>`
 carry the identical string — refuse to bump one without the other. Apply only
 the env changes from the approved report. Then:
 
 ```bash
+date -u +%FT%TZ > UPGRADED_AT
 docker compose pull && docker compose up -d      # up -d, not down: keeps volumes and network
 for i in $(seq 1 24); do curl -sf "$URL/healthz" && break; sleep 5; done   # 120 s cap
 docker compose logs --since 5m n8n | grep -iE 'migrat|error|deprecat'
@@ -123,26 +177,44 @@ docker compose ps runners && docker compose exec n8n n8n --version
 
 A migration log line on first start is expected; an error line is not.
 
-## Step 5 — prove the active workflows
+## Step 6 — resume, then prove the jobs run normally
 
-1. `curl … "$URL/api/v1/workflows?active=true" > active-after.json`.
-2. Diff by id and name: `jq -r '.data[]|"\(.id) \(.name)"' active-before.json | sort` against `-after`; without `jq`, print both lists and compare by eye and say so.
-3. Any workflow missing or now inactive is a failure.
-4. `executions?status=error` newer than the upgrade timestamp is a failure.
-5. Fire the smoke workflow (webhook `curl`, or `docker compose exec -u node n8n n8n execute --id <id>`) and wait for one `success` execution.
+1. **Resume** — `POST /api/v1/workflows/<id>/publish` for each id in
+   `paused.txt`, nothing else (a workflow inactive before stays inactive).
+   A publish that fails is a failure, named.
+2. `curl … "$URL/api/v1/workflows?active=true" > active-after.json`; diff by
+   id and name: `jq -r '.data[]|"\(.id) \(.name)"' active-before.json | sort`
+   against `-after`. Missing or inactive = failure.
+3. **Carried-over work** — each id in `inflight-before.txt` that was
+   `waiting` must still be `waiting` (or since finished `success`); any
+   `crashed`/`canceled` = failure, named with its workflow. Queued (`new`)
+   executions left at the restart (`queued-at-restart.txt`) must leave
+   `new` after startup — watch each to a terminal status; one stuck in
+   `new` with free capacity, or `crashed`, = failure.
+4. **Smoke** — fire the smoke workflow (webhook `curl`, or
+   `docker compose exec -u node n8n n8n execute --id <id>`); one `success`.
+5. **Watch real traffic** for 10 minutes (or until each resumed workflow
+   with a schedule/webhook has run once, whichever the user named):
+   executions with `startedAfter=$(cat UPGRADED_AT)` grouped by workflow and
+   status. Any `error` or `crashed` newer than the upgrade = failure; a
+   `running` stuck past the workflow's normal duration = report it.
+6. Report: version, workflows resumed n/n, carried-over executions ok/failed,
+   new executions per workflow by status, smoke result.
 
-Any failure goes to Step 6. Do not fix forward without asking.
+Any failure goes to Step 7. Do not fix forward without asking.
 
-## Step 6 — rollback
+## Step 7 — rollback
 
 Forward database migrations have no supported revert, so the snapshot is the
-only way back — that is why Step 3 is mandatory.
+only way back — that is why Step 4 is mandatory.
 
 1. `docker compose down` (only now).
 2. Restore the compose file and `.env` from the snapshot.
 3. `docker compose up -d db && docker compose exec -T db pg_restore -U <user> -d <db> --clean < db.dump` (or copy `database.sqlite` back).
 4. `docker run --rm -v <volume>:/data -v "$PWD":/backup alpine sh -c 'rm -rf /data/* && tar xzf /backup/n8n_data.tgz -C /data'`.
-5. `docker compose up -d`, then Step 4's wait and Step 5's diff again.
+5. `docker compose up -d`, then Step 5's health wait. The dump was taken
+   with the workflows paused, so they come back unpublished: run Step 6
+   from 1 (publish `paused.txt`) through 5 again.
 
 ## Traps this upgrade has already hit
 
