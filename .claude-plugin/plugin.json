@@ -1,6 +1,6 @@
 {
   "name": "skills",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "Personal Claude Code skills — self-orchestrated task execution, Kafka/Confluent admin and dev, and more.",
   "author": {
     "name": "thititongumpun"
@@ -26,6 +26,7 @@
     "./skills/mfec-kafka-connect",
     "./skills/mfec-metrics-perf",
     "./skills/mfec-pptx-diagram",
+    "./skills/mfec-timesheet",
     "./skills/my-facebook-reels-workflows",
     "./skills/n8n-upgrade",
     "./skills/peekaboo-teams",
