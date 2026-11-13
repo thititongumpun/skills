@@ -1,6 +1,6 @@
 ---
 name: sync-skill-installs
-description: Reinstall this repo's skills into the global (~/.agents/skills) and project (.agents/skills) copies, refresh skills-lock.json hashes, and verify both match source. Use when the user says "reinstall global", "reinstall skills", "sync the installs", or after editing anything under skills/ in this repo.
+description: Reinstall this repo's skills into the global (~/.agents/skills) and project (.agents/skills) copies, refresh skills-lock.json hashes, verify both match source, then update the installed Claude Code plugin (skills@thititongumpun) from the pushed repo. Use when the user says "reinstall global", "reinstall skills", "sync the installs", "update the plugin", or after editing anything under skills/ in this repo.
 ---
 
 # Sync skill installs
@@ -44,6 +44,28 @@ for s in skills/*/; do n=$(basename "$s"); for dst in ~/.agents/skills/"$n" .age
 
 Then report which skills changed. `.agents/` and `skills-lock.json` are
 gitignored, so nothing here belongs in a commit.
+
+## Claude Code plugin
+
+The plugin (`skills@thititongumpun`) installs from GitHub, not from this
+working tree, so it only picks up what is pushed. Skip this part when the
+`claude` CLI is missing or the plugin is not installed
+(`claude plugin list | grep -q skills@thititongumpun`).
+
+1. A skill changed since the last plugin release → bump `version` in
+   `.claude-plugin/plugin.json` (patch for edits, minor for a new skill);
+   the plugin updater compares versions, so an unbumped push is not picked up.
+2. Unpushed commits (`git status -sb` shows `ahead`) → the plugin would
+   get the old copy. Commit and push only when the user asked for it;
+   otherwise stop here and say the plugin is behind until they push.
+3. Then:
+
+```bash
+claude plugin marketplace update thititongumpun
+claude plugin update skills@thititongumpun   # expect "updated from X to Y"; "already at" = version not bumped
+```
+
+Tell the user to restart Claude Code — the plugin loads at startup.
 
 ## Before you sync
 

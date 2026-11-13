@@ -199,6 +199,7 @@ session that day, and git commits) into a paste-ready timesheet list: a
 - **sync-skill-installs** — reinstalls this repo's skills into the global and
   project copies, refreshes the lock hashes, and proves both match source. The
   three locations don't share files, so editing `skills/` alone changes nothing
-  an agent actually loads.
+  an agent actually loads. Then bumps the plugin version and runs `claude plugin update` so
+  the installed Claude Code plugin follows once the repo is pushed.
 
 When to reach for each, in the form agents read: [AGENTS.md](AGENTS.md).
