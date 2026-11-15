@@ -25,25 +25,51 @@ for s in skills/*/; do n=$(basename "$s"); rsync -a --delete --delete-excluded \
 for d in .agents/skills/*/; do n=$(basename "$d"); [ -d "skills/$n" ] && rsync -a --delete --delete-excluded \
   --exclude='__pycache__' "skills/$n/" "$d"; done
 
-# 3. lock hashes follow the files
+# 3. global -> Antigravity CLI (~/.gemini/config/skills) & T3 Code Antigravity provider
+mkdir -p ~/.gemini/config/skills
+for d in ~/.agents/skills/*/; do n=$(basename "$d"); ln -sfn "../../../.agents/skills/$n" ~/.gemini/config/skills/"$n"; done
+for p in ~/.t3/userdata/providers/antigravity/*/; do
+  [ -d "$p" ] || continue
+  mkdir -p "$p/config/skills"
+  rsync -aL --delete --exclude='__pycache__' ~/.agents/skills/ "$p/config/skills/"
+done
+
+# 4. lock hashes follow the files
 python3 - <<'PY'
 import hashlib, json, pathlib
 lock = pathlib.Path("skills-lock.json")
-d = json.loads(lock.read_text())
-for name, meta in d["skills"].items():
-    f = pathlib.Path(meta["skillPath"])
-    if f.exists():
-        meta["computedHash"] = hashlib.sha256(f.read_bytes()).hexdigest()
-lock.write_text(json.dumps(d, indent=2) + "\n")
+if lock.exists():
+    d = json.loads(lock.read_text())
+    for name, meta in d.get("skills", {}).items():
+        f = pathlib.Path(meta["skillPath"])
+        if f.exists():
+            meta["computedHash"] = hashlib.sha256(f.read_bytes()).hexdigest()
+    lock.write_text(json.dumps(d, indent=2) + "\n")
 PY
 
-# 4. prove it — both installs
-for s in skills/*/; do n=$(basename "$s"); for dst in ~/.agents/skills/"$n" .agents/skills/"$n"; do
+# 5. prove it — all installs
+for s in skills/*/; do n=$(basename "$s"); for dst in ~/.agents/skills/"$n" .agents/skills/"$n" ~/.t3/userdata/providers/antigravity/*/config/skills/"$n"; do
   [ -d "$dst" ] && { diff -rq "$s" "$dst" >/dev/null || echo "DRIFT: $dst"; }; done; done
 ```
 
 Then report which skills changed. `.agents/` and `skills-lock.json` are
 gitignored, so nothing here belongs in a commit.
+
+## Fresh machine bootstrap (all skill packs)
+
+To install this repo plus `obra/superpowers` and `mattpocock/skills` globally on a new machine (for Claude Code, Gemini CLI, Antigravity CLI, and T3 Code Antigravity):
+
+```bash
+npx -y skills@latest add thititongumpun/skills -g -s '*' -a antigravity gemini-cli claude-code -y
+npx -y skills@latest add obra/superpowers -g -s '*' -a antigravity gemini-cli claude-code -y
+npx -y skills@latest add mattpocock/skills -g -s '*' -a antigravity gemini-cli claude-code -y
+
+for p in ~/.t3/userdata/providers/antigravity/*/; do
+  [ -d "$p" ] || continue
+  mkdir -p "$p/config/skills"
+  rsync -aL --delete --exclude='__pycache__' ~/.agents/skills/ "$p/config/skills/"
+done
+```
 
 ## Claude Code plugin
 
