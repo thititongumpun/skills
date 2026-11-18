@@ -27,8 +27,10 @@ Optional, any order, e.g. `/mfec-timesheet today BAY 9-10`:
 - **project**: any other token. Resolve it against the output of
   `npm --prefix /home/thiti/dev/TimeCheese run -s timesheet projects`
   (`project_no<TAB>project_name`; case-insensitive project_no first, then
-  substring). The header line becomes that `project_no`. Ambiguous or no
-  match: show candidates and ask. No project arg: keep `[PLACEHOLDER]`.
+  substring). project_no is NOT unique (one number covers several projects),
+  so pin a single row and keep its `project_name` for saving. The header line
+  becomes that `project_no`. Ambiguous or no match: show candidates and ask.
+  No project arg: keep `[PLACEHOLDER]`.
 
 ## 1. Collect today's work
 
@@ -78,8 +80,11 @@ After the reply, ask whether to save it into TimeCheese. Then:
 
 - Header still `[PLACEHOLDER]`: ask which project (the user types it). Never guess.
 - No time given: ask for start–end, or save without times (the DB allows null).
-- On yes: write the bullets (no header line) to a temp file and run
-  `npm --prefix /home/thiti/dev/TimeCheese run -s timesheet -- add --date <D> --project <project_no> [--start HH:MM --end HH:MM] --description-file <absolute tmp path>`.
+- The user may replace the header with tags (e.g. `[Learning][Topic]`); a
+  header that is just the project_no is dropped, any other header is kept as
+  the first line of the description.
+- On yes: write the description to a temp file and run
+  `npm --prefix /home/thiti/dev/TimeCheese run -s timesheet -- add --date <D> --project "<project_name>" [--start HH:MM --end HH:MM] --description-file <absolute tmp path>`.
   It validates the slot (09:00–18:00, no overlap, 8h max), inserts, and prints the
   row id + AI summary. Report that, or the error (e.g. overlap) as-is.
 - "Not logged in": tell the user to run
