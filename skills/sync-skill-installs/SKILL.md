@@ -13,7 +13,12 @@ skills only from the plugin (`skills:<name>`); a `~/.claude/skills/<name>` or
 step 5 removes them (same for the superpowers and mattpocock plugins). Editing `skills/` alone changes nothing that any
 agent actually loads.
 
-Run the whole thing, every time — a partial sync is how installs drift:
+**Only removing duplicates** (another machine, no clone of this repo): run
+`python3 <this skill dir>/scripts/dedupe_claude_skills.py` from anywhere (from
+inside a project, it also cleans that project's `.claude/skills`), then restart
+Claude Code. Skip everything else.
+
+Inside the repo, run the whole thing, every time — a partial sync is how installs drift:
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"
@@ -51,21 +56,7 @@ PY
 
 # 5. no duplicates in Claude Code: a ~/.claude/skills or .claude/skills symlink to a
 #    skill an enabled plugin already ships (this repo, superpowers, mattpocock, …) loads it twice
-python3 - <<'PY'
-import json, os, pathlib
-h = pathlib.Path.home() / ".claude"
-try:
-    on = json.loads((h / "settings.json").read_text()).get("enabledPlugins", {})
-    inst = json.loads((h / "plugins/installed_plugins.json").read_text())["plugins"]
-except (OSError, ValueError, KeyError):
-    raise SystemExit
-names = {f.parent.name for k, v in inst.items() if on.get(k) for e in v
-         for f in pathlib.Path(e["installPath"]).rglob("SKILL.md") if "node_modules" not in f.parts}
-for d in (h / "skills", pathlib.Path(".claude/skills")):
-    for l in (d.iterdir() if d.is_dir() else []):
-        if l.is_symlink() and l.name in names:
-            l.unlink(); print("removed dup:", l)
-PY
+python3 skills/sync-skill-installs/scripts/dedupe_claude_skills.py
 
 # 6. prove it — all installs
 for s in skills/*/; do n=$(basename "$s"); for dst in ~/.agents/skills/"$n" .agents/skills/"$n" ~/.t3/userdata/providers/antigravity/*/config/skills/"$n"; do
