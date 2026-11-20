@@ -1,7 +1,7 @@
 ---
 name: mfec-timesheet
-argument-hint: "[date] [project] [time] e.g. today BAY 9-10"
-description: Turn everything the user got done on a day into a timesheet task list — a project header line ("[PLACEHOLDER]" unless a project arg is given) and short English bullets ("- Set up …", "- Test …"), ready to paste into the MFEC timesheet, then optionally save it into TimeCheese. Accepts optional args in any order: date (today/yesterday/YYYY-MM-DD), project, time (9-10). Use when the user says "timesheet", "mfec-timesheet", "สรุปงานวันนี้", "ลง timesheet", or asks what they worked on today.
+argument-hint: "[date] [project] [time] e.g. today BAY 9-18"
+description: 'Turn everything the user got done on a day into a short timesheet task list — a project header line ("[PLACEHOLDER]" unless a project arg is given) and terse English bullets ("- Set up …", "- Test …"), ready to paste into the MFEC timesheet, then optionally save it into TimeCheese (defaults to 09:00-18:00). Accepts optional args in any order: date (today/yesterday/YYYY-MM-DD), project, time (9-18). Use when the user says "timesheet", "mfec-timesheet", "สรุปงานวันนี้", "ลง timesheet", or asks what they worked on today.'
 ---
 
 # MFEC timesheet
@@ -10,9 +10,9 @@ Output is one code block, nothing else around it but a one-line source note:
 
 ```
 [PLACEHOLDER]
-- Set up real WarpStream BYOC cluster and agent following the official docs.
-- Test WarpStream BYOC: durability (kill agent, no data loss), latency and throughput benchmark, SASL + ACL on the real control plane, consumer lag.
-- Write the WarpStream BYOC lab doc with results and caveats; review it and update the summary.
+- Set up WarpStream BYOC cluster + agent.
+- Test WarpStream BYOC: failover, latency/throughput, SASL + ACL, consumer lag.
+- Write WarpStream BYOC lab report.
 ```
 
 `[PLACEHOLDER]` stays literally unless a project arg is given — the user
@@ -20,10 +20,10 @@ fills the project code. Never guess it.
 
 ## 0. Args
 
-Optional, any order, e.g. `/mfec-timesheet today BAY 9-10`:
+Optional, any order, e.g. `/mfec-timesheet today BAY 9-18`:
 
 - **date**: `today` (default), `yesterday`, or `YYYY-MM-DD`.
-- **time**: `9-10`, `9:30-12`, `13-18` → start/end `HH:MM`.
+- **time**: `9-18` (default `09:00`–`18:00` when saving, or `none` for null), `9:30-12`, `13-18` → start/end `HH:MM`.
 - **project**: any other token. Resolve it against the output of
   `npm --prefix /home/thiti/dev/TimeCheese run -s timesheet projects`
   (`project_no<TAB>project_name`; case-insensitive project_no first, then
@@ -54,12 +54,17 @@ and 3 and say in the source note that only this session was covered.
 
 ## 2. Write the bullets
 
+Short and scannable (ponytail / i-have-adhd style): a reader gets each line
+in one glance.
+
 - One bullet per task, not per prompt or commit. Fold retries, fixups,
   "แก้", "commit push", and follow-up tweaks into the task they belong to.
-- English, imperative verb first (Set up, Test, Fix, Review, Write, Deploy,
-  Upgrade, Tear down), one sentence, ends with a period. Details after a
-  colon, comma-separated, as in the example.
-- Name the real thing: product, component, environment (dev/uat/prd),
+- Imperative verb first (Set up, Test, Fix, Review, Write, Deploy, Upgrade,
+  Tear down), max ~12 words, ends with a period. Extra detail after a colon,
+  comma-separated keywords, not sentences. No filler ("comprehensive",
+  "following best practices", "for stakeholders").
+- Aim for 3–6 bullets a day. Never invent work to fill space.
+- Name the real thing: product, component, environment (`dev`/`uat`/`prd`),
   what was proven. No file paths, commands, commit hashes, ticket-less
   jargon, or tool names of the agent itself (Claude, skills, subagents)
   unless the skill/tool *is* the deliverable.
@@ -76,10 +81,12 @@ instead of inventing bullets.
 
 ## 4. Save to TimeCheese
 
-After the reply, ask whether to save it into TimeCheese. Then:
+After the reply, ask whether to save it into TimeCheese (confirming the
+default `09:00–18:00` slot unless the user gave another time or `none`). Then:
 
 - Header still `[PLACEHOLDER]`: ask which project (the user types it). Never guess.
-- No time given: ask for start–end, or save without times (the DB allows null).
+- No time given: default to `--start 09:00 --end 18:00` (confirm with the
+  user alongside the project, or omit `--start`/`--end` if they ask for null).
 - The user may replace the header with tags (e.g. `[Learning][Topic]`); a
   header that is just the project_no is dropped, any other header is kept as
   the first line of the description.

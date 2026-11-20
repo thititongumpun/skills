@@ -6,9 +6,11 @@ description: Reinstall this repo's skills into the global (~/.agents/skills) and
 # Sync skill installs
 
 Skills here live in three places that do not share files: `skills/` (source of
-truth, tracked), `~/.agents/skills/` (global — every session outside this repo
-reads it, via symlinks from `~/.claude/skills/`), and `.agents/skills/`
-(project-local, gitignored). Editing `skills/` alone changes nothing that any
+truth, tracked), `~/.agents/skills/` (global, for non-Claude agents), and
+`.agents/skills/` (project-local, gitignored). Claude Code loads this repo's
+skills only from the plugin (`skills:<name>`); a `~/.claude/skills/<name>` or
+`.claude/skills/<name>` symlink to the same skill makes it show up twice, so
+step 5 removes them (same for the superpowers and mattpocock plugins). Editing `skills/` alone changes nothing that any
 agent actually loads.
 
 Run the whole thing, every time — a partial sync is how installs drift:
@@ -47,7 +49,25 @@ if lock.exists():
     lock.write_text(json.dumps(d, indent=2) + "\n")
 PY
 
-# 5. prove it — all installs
+# 5. no duplicates in Claude Code: a ~/.claude/skills or .claude/skills symlink to a
+#    skill an enabled plugin already ships (this repo, superpowers, mattpocock, …) loads it twice
+python3 - <<'PY'
+import json, os, pathlib
+h = pathlib.Path.home() / ".claude"
+try:
+    on = json.loads((h / "settings.json").read_text()).get("enabledPlugins", {})
+    inst = json.loads((h / "plugins/installed_plugins.json").read_text())["plugins"]
+except (OSError, ValueError, KeyError):
+    raise SystemExit
+names = {f.parent.name for k, v in inst.items() if on.get(k) for e in v
+         for f in pathlib.Path(e["installPath"]).rglob("SKILL.md") if "node_modules" not in f.parts}
+for d in (h / "skills", pathlib.Path(".claude/skills")):
+    for l in (d.iterdir() if d.is_dir() else []):
+        if l.is_symlink() and l.name in names:
+            l.unlink(); print("removed dup:", l)
+PY
+
+# 6. prove it — all installs
 for s in skills/*/; do n=$(basename "$s"); for dst in ~/.agents/skills/"$n" .agents/skills/"$n" ~/.t3/userdata/providers/antigravity/*/config/skills/"$n"; do
   [ -d "$dst" ] && { diff -rq "$s" "$dst" >/dev/null || echo "DRIFT: $dst"; }; done; done
 ```
@@ -60,9 +80,13 @@ gitignored, so nothing here belongs in a commit.
 To install this repo plus `obra/superpowers` and `mattpocock/skills` globally on a new machine (for Claude Code, Gemini CLI, Antigravity CLI, and T3 Code Antigravity):
 
 ```bash
-npx -y skills@latest add thititongumpun/skills -g -s '*' -a antigravity gemini-cli claude-code -y
-npx -y skills@latest add obra/superpowers -g -s '*' -a antigravity gemini-cli claude-code -y
-npx -y skills@latest add mattpocock/skills -g -s '*' -a antigravity gemini-cli claude-code -y
+npx -y skills@latest add thititongumpun/skills -g -s '*' -a antigravity gemini-cli -y  # Claude Code gets these via the plugin
+# Claude Code gets all three packs as plugins, never as ~/.claude/skills symlinks (they would load twice)
+claude plugin marketplace add thititongumpun/skills && claude plugin install skills@thititongumpun
+claude plugin install superpowers@claude-plugins-official
+claude plugin marketplace add mattpocock/skills && claude plugin install mattpocock-skills@mattpocock
+npx -y skills@latest add obra/superpowers -g -s '*' -a antigravity gemini-cli -y
+npx -y skills@latest add mattpocock/skills -g -s '*' -a antigravity gemini-cli -y
 
 for p in ~/.t3/userdata/providers/antigravity/*/; do
   [ -d "$p" ] || continue
@@ -102,9 +126,8 @@ Tell the user to restart Claude Code — the plugin loads at startup.
   file until a `--delete` rsync runs. That is what this skill is for.
 - **A rename is two renames.** `skills/old` → `skills/new` leaves
   `~/.agents/skills/old`, `.agents/skills/old`, and the
-  `~/.claude/skills/old` symlink behind, all still loading the old skill.
-  Remove the old directory in every install and repoint the symlink:
-  `ln -s ../../.agents/skills/new ~/.claude/skills/new`.
+  plugin's old copy until the next plugin release. Remove the old directory
+  in every install, then bump and update the plugin.
 - **The skill registry is read at session start.** A renamed or new skill does
   not appear in this session — say so, and tell the user to `/clear` or
   restart.
